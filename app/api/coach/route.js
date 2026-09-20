@@ -57,6 +57,7 @@ export async function GET(req) {
       myScore = { points: rankIdx >= 0 ? leaderboard[rankIdx].total_points : 0, rank: rankIdx >= 0 ? rankIdx + 1 : null };
       return NextResponse.json({
         team: teamData.team,
+        budget: teamData.team.budget,
         squad: teamData.players,
         total_points: teamData.total_points,
         week,
@@ -142,6 +143,13 @@ export async function POST(req) {
       if (!inSquad) return NextResponse.json({ error: 'اللاعب ليس في تشكيلتك' }, { status: 400 });
       await db.prepare('UPDATE coach_teams SET captain_player_id = ? WHERE id = ?').run(pid, teamId);
       return NextResponse.json({ message: 'تم تعيين الكابتن ⭐' });
+    }
+
+    if (action === 'delete') {
+      await db.prepare('DELETE FROM coach_transfers WHERE team_id = ?').run(teamId);
+      await db.prepare('DELETE FROM coach_squad WHERE team_id = ?').run(teamId);
+      await db.prepare('DELETE FROM coach_teams WHERE id = ?').run(teamId);
+      return NextResponse.json({ message: 'تم حذف فريقك' });
     }
 
     return NextResponse.json({ error: 'إجراء غير معروف' }, { status: 400 });
