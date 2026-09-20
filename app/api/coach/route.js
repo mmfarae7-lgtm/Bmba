@@ -7,6 +7,9 @@ const coach = require('../../../lib/coach');
 const LEAGUES = {
   EPL: { name: 'الدوري الإنجليزي الممتاز', icon: '🏴󠁧󠁢󠁥󠁮󠁧󠁿' },
   LIGA: { name: 'الدوري الإسباني', icon: '🇪🇸' },
+  ITA: { name: 'الدوري الإيطالي', icon: '🇮🇹' },
+  GER: { name: 'الدوري الألماني', icon: '🇩🇪' },
+  FRA: { name: 'الدوري الفرنسي', icon: '🇫🇷' },
   SAU: { name: 'دوري روشن السعودي', icon: '🇸🇦' },
 };
 

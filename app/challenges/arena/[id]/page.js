@@ -56,6 +56,21 @@ export default function ArenaDetail() {
     router.push('/challenges/arena');
   };
 
+  const refreshMatches = async () => {
+    setBusy(true);
+    try {
+      const res = await fetch(`/api/arena/${id}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'refresh' }),
+      });
+      const r = await res.json();
+      if (res.ok) { showToast(r.message + (r.added ? ` (+${r.added})` : '')); load(); }
+      else showToast(r.error || 'تعذر التحديث');
+    } catch { showToast('خطأ في الاتصال'); }
+    setBusy(false);
+  };
+
   if (!data) {
     return (
       <>
@@ -89,6 +104,9 @@ export default function ArenaDetail() {
             <b dir="ltr" style={{ color: 'var(--gold)', fontSize: '1.4rem', letterSpacing: 3 }}>{data.arena.code}</b>
           </div>
           <button type="button" className="btn-outline" style={{ width: 'auto' }} onClick={copyCode}>نسخ الرمز</button>
+          {isOwner && (
+            <button type="button" className="btn-outline" style={{ width: 'auto' }} disabled={busy} onClick={refreshMatches}>🔄 تحديث المباريات</button>
+          )}
           <button type="button" className="btn-sm btn-danger" onClick={leave}>{isOwner ? 'حذف الحلبة' : 'مغادرة الحلبة'}</button>
         </div>
 

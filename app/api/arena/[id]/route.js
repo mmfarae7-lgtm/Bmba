@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 const db = require('../../../../lib/db');
+const arenaLib = require('../../../../lib/arena');
 const { requireAuth, errorResponse } = require('../../../../lib/auth');
 
 async function arenaPoints(arenaId, members) {
@@ -49,13 +50,17 @@ export async function GET(req, { params }) {
       ORDER BY (a.owner_id = u.id) DESC, u.name
     `).all(arena.id);
 
-    const matches = await db.prepare(`
-      SELECT m.*, l.name as league_name, l.logo_url as league_logo
-      FROM matches m LEFT JOIN leagues l ON l.id = m.league_id
-      WHERE m.match_date >= date('now', '-2 days') AND m.match_date <= date('now', '+7 days')
-        AND m.status != 'finished'
-      ORDER BY m.match_date, m.match_time LIMIT 40
-    `).all();
+    // مباريات الحلبة الخاصة (حقيقية من الـ API ومرتبطة بها فقط)
+    // عند التأكد أن الحلبة لم تُربط بعد بأي مباراة (يفضّل من إنشاء الحلبة)
+    const linkedCount = await db.prepare('SELECT COUNT(*) as c FROM arena_matches WHERE arena_id = ?').get(arena.id);
+    if (!linkedCount || linkedCount.c === 0) {
+      try {
+        await arenaLib.attachArenaMatches(arena.id);
+      } catch (e) {
+        // استمرار بدون مباريات إذا تعذرت المزامنة
+      }
+    }
+    const matches = await arenaLib.arenaMatches(arena.id);
 
     const predictions = await db.prepare(`
       SELECT * FROM arena_predictions WHERE arena_id = ?
@@ -99,9 +104,20 @@ export async function POST(req, { params }) {
     if (!isMember) return NextResponse.json({ error: 'لست عضواً في هذه الحلبة' }, { status: 403 });
 
     const body = await req.json();
+
+    // للمالك فقط: إعادة ربط أقرب المباريات القادمة من الـ API بالحلبة
+    if (body.action === 'refresh' && arena.owner_id === user.id) {
+      const added = await arenaLib.attachArenaMatches(arena.id);
+      return NextResponse.json({ message: 'تم تحديث مباريات الحلبة', added });
+    }
+
     const match = await db.prepare('SELECT * FROM matches WHERE id = ?').get(Number(body.match_id));
     if (!match) return NextResponse.json({ error: 'المباراة غير موجودة' }, { status: 404 });
     if (match.status === 'finished') return NextResponse.json({ error: 'انتهت المباراة — لا يمكن التوقع' }, { status: 400 });
+
+    // المباراة يجب أن تكون خاصة بهذه الحلبة (مرتبطة بها)
+    const privateMatch = await arenaLib.isArenaMatch(arena.id, match.id);
+    if (!privateMatch) return NextResponse.json({ error: 'هذه المباراة ليست ضمن مباريات الحلبة' }, { status: 403 });
 
     const hs = Number(body.home_score);
     const as = Number(body.away_score);

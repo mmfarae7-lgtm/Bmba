@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 const db = require('../../../lib/db');
+const arenaLib = require('../../../lib/arena');
 const { requireAuth, errorResponse } = require('../../../lib/auth');
 
 const CODE_CHARS = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
@@ -73,8 +74,15 @@ export async function POST(req) {
     const res = await db.prepare('INSERT INTO arenas (name, code, owner_id, tag) VALUES (?, ?, ?, ?)')
       .run(name, code, user.id, tag);
     await db.prepare('INSERT INTO arena_members (arena_id, user_id) VALUES (?, ?)').run(res.lastInsertRowid, user.id);
+    // ربط أقرب المباريات الحقيقية القادمة بالحلبة (خاصة بها — لا تضاف للتوقعات العامة)
+    let linked = 0;
+    try {
+      linked = await arenaLib.attachArenaMatches(res.lastInsertRowid);
+    } catch (e) {
+      // لا نفشل الإنشاء إذا تعذرت المزامنة
+    }
     const arena = await db.prepare('SELECT * FROM arenas WHERE id = ?').get(res.lastInsertRowid);
-    return NextResponse.json({ message: 'تم إنشاء الحلبة 🎯', arena });
+    return NextResponse.json({ message: 'تم إنشاء الحلبة 🎯', arena, linked_matches: linked });
   } catch (e) {
     return errorResponse(e);
   }

@@ -122,7 +122,7 @@ export default function ArenaHub() {
           <div className="sec-card">
             <h3>➕ إنشاء حلبة جديدة</h3>
             <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', marginBottom: 12 }}>
-              لكل عضو حلبة واحدة فقط • اختر تصنيف الحلبة (العائلة، الأصدقاء، محبي دوري معيّن…)
+              لكل عضو حلبة واحدة فقط • المباريات حقيقية من API المباريات وتُربط بحلبتك خاصة — لا تُضاف للتوقعات العامة
             </p>
             <form onSubmit={create} style={{ display: 'grid', gap: 12 }}>
               <div className="form-group">

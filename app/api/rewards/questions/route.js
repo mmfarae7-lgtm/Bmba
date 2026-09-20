@@ -7,10 +7,13 @@ const db = require('../../../../lib/db');
 export async function GET(req) {
   try {
     const user = await requireAuth(req);
-    // أسئلة عشوائية — تختلف من مشترك لآخر، مع عدم كشف الإجابات الصحيحة
-    const randomQuestions = pickRandomQuestions(8);
+    // تتبّع الأسئلة المُجابة سابقاً لتنويع الأسئلة بين المشتركين (لا يتكرر سؤال مُجاب)
     const rows = await db.prepare("SELECT day FROM rewards_claims WHERE user_id = ? AND action = 'question'").all(user.id);
     const claimed = rows.map((r) => r.day);
+    const claimedSet = new Set(claimed);
+    const available = QUESTIONS.filter((q) => !claimedSet.has(q.id));
+    // أسئلة عشوائية — تختلف من مشترك لآخر، مع عدم كشف الإجابات الصحيحة
+    const randomQuestions = pickRandomQuestions(8, available.length > 0 ? available : QUESTIONS);
     return NextResponse.json({
       questions: randomQuestions.map((q) => ({
         id: q.id,
@@ -19,7 +22,7 @@ export async function GET(req) {
         bombs: q.bombs,
       })),
       claimed,
-      totalInPool: 64,
+      totalInPool: QUESTIONS.length,
     });
   } catch (e) {
     return NextResponse.json({ error: e.message }, { status: e.status || 500 });
