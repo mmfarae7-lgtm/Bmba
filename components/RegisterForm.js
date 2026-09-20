@@ -1,0 +1,246 @@
+'use client';
+import { useRef, useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { useI18n } from '../lib/i18n';
+import { COUNTRIES, DIAL_CODES } from '../lib/countries';
+
+export default function RegisterForm({ onDone }) {
+  const { t } = useI18n();
+  const router = useRouter();
+  const fileRef = useRef(null);
+  const [avatar, setAvatar] = useState('');
+  const [name, setName] = useState('');
+  const [phoneCode, setPhoneCode] = useState('+966');
+  const [phone, setPhone] = useState('');
+  const [country, setCountry] = useState(COUNTRIES[0]);
+  const [gender, setGender] = useState('');
+  const [birth, setBirth] = useState('');
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [invite, setInvite] = useState('');
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  // تعبئة كود الدعوة مسبقاً من رابط المشاركة ?ref=<CODE>
+  useEffect(() => {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const ref = params.get('ref') || params.get('invite') || params.get('invite_code');
+      if (ref) setInvite(String(ref).trim());
+    } catch {}
+  }, []);
+
+  const finish = () => {
+    try { localStorage.setItem('bomba-onboarded', '1'); } catch {}
+    try { document.cookie = 'bomba-onboarded=1; path=/; max-age=31536000; SameSite=Lax'; } catch {}
+    if (onDone) { onDone(); return; }
+    router.push('/');
+    router.refresh();
+  };
+
+  const handleAvatar = (e) => {
+    const file = e.target.files && e.target.files[0];
+    if (!file) return;
+    if (file.size > 2 * 1024 * 1024) {
+      setError(t('reg_avatar_size'));
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => setAvatar(reader.result);
+    reader.readAsDataURL(file);
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setError('');
+
+    if (!name.trim() || !phone.trim() || !country || !gender || !birth) {
+      setError(t('reg_missing'));
+      return;
+    }
+    if (password !== confirmPassword) {
+      setError(t('reg_mismatch'));
+      return;
+    }
+
+    setLoading(true);
+    const payload = {
+      name: name.trim(),
+      phone: phone.trim(),
+      phone_code: phoneCode,
+      country,
+      gender,
+      birth_date: birth,
+      avatar: avatar || null,
+      password,
+      invite_code: invite.trim() || null,
+    };
+
+    try {
+      const res = await fetch('/api/auth/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error);
+        setLoading(false);
+        return;
+      }
+      finish();
+    } catch {
+      setError(t('reg_loading'));
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="reg-full">
+      {error && <div className="error-msg">{error}</div>}
+
+      <form onSubmit={handleSubmit}>
+        <div className="avatar-upload">
+          <div className={`avatar-preview ${avatar ? 'has-img' : ''}`}>
+            {avatar ? (
+              <img src={avatar} alt="avatar" />
+            ) : (
+              <span className="avatar-placeholder">📷</span>
+            )}
+          </div>
+          <div className="avatar-actions">
+            <input
+              ref={fileRef}
+              type="file"
+              accept="image/*"
+              hidden
+              onChange={handleAvatar}
+            />
+            <button type="button" className="btn-ghost" onClick={() => fileRef.current && fileRef.current.click()}>
+              {t('reg_avatar_add')}
+            </button>
+            {avatar && (
+              <button type="button" className="btn-ghost danger" onClick={() => setAvatar('')}>
+                {t('reg_avatar_remove')}
+              </button>
+            )}
+          </div>
+        </div>
+
+        <div className="form-group">
+          <label>{t('reg_invite')}</label>
+          <input
+            type="text"
+            dir="ltr"
+            style={{ textAlign: 'center', textTransform: 'uppercase' }}
+            value={invite}
+            onChange={(e) => setInvite(e.target.value)}
+            placeholder={t('reg_invite_ph')}
+          />
+          <span className="rw-hint" style={{ marginTop: 4, display: 'block' }}>{t('reg_invite_note')}</span>
+        </div>
+
+        <div className="form-group">
+          <label>{t('reg_username')} *</label>
+          <input
+            type="text"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="..."
+            required
+          />
+        </div>
+
+        <div className="form-group">
+          <label>{t('reg_phone')} *</label>
+          <div className="phone-row">
+            <select value={phoneCode} onChange={(e) => setPhoneCode(e.target.value)} className="phone-code">
+              {DIAL_CODES.map(([code, label]) => (
+                <option key={code} value={code}>{code} {label}</option>
+              ))}
+            </select>
+            <input
+              type="tel"
+              dir="ltr"
+              style={{ textAlign: 'center' }}
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              placeholder="5XXXXXXXX"
+              required
+            />
+          </div>
+        </div>
+
+        <div className="form-group">
+          <label>{t('reg_country')} *</label>
+          <select value={country} onChange={(e) => setCountry(e.target.value)} required>
+            {COUNTRIES.map((c) => (
+              <option key={c} value={c}>{c}</option>
+            ))}
+          </select>
+        </div>
+
+        <div className="form-group">
+          <label>{t('reg_gender')} *</label>
+          <div className="gender-row">
+            <button
+              type="button"
+              className={`gender-btn ${gender === 'male' ? 'active' : ''}`}
+              onClick={() => setGender('male')}
+            >
+              👨 {t('reg_male')}
+            </button>
+            <button
+              type="button"
+              className={`gender-btn ${gender === 'female' ? 'active' : ''}`}
+              onClick={() => setGender('female')}
+            >
+              👩 {t('reg_female')}
+            </button>
+          </div>
+        </div>
+
+        <div className="form-group">
+          <label>{t('reg_birth')} *</label>
+          <input
+            type="date"
+            dir="ltr"
+            style={{ textAlign: 'center' }}
+            value={birth}
+            max={new Date().toISOString().split('T')[0]}
+            onChange={(e) => setBirth(e.target.value)}
+            required
+          />
+        </div>
+
+        <div className="form-group">
+          <label>{t('reg_pass')} *</label>
+          <input
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            placeholder="4 chars min"
+            required
+            minLength="4"
+          />
+        </div>
+
+        <div className="form-group">
+          <label>{t('reg_confirm')} *</label>
+          <input
+            type="password"
+            value={confirmPassword}
+            onChange={(e) => setConfirmPassword(e.target.value)}
+            placeholder="..."
+            required
+            minLength="4"
+          />
+        </div>
+
+        <button type="submit" className="btn-primary" disabled={loading}>
+          {loading ? t('reg_loading') : t('reg_btn')}
+        </button>
+      </form>
+    </div>
+  );
+}

@@ -1,0 +1,8 @@
+node_modules
+.next
+bomba.db
+bomba.db-wal
+bomba.db-shm
+migrate-to-turso.js
+verify-turso.js
+server.log

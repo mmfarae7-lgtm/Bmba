@@ -1,0 +1,66 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <defs>
+    <clipPath id="ballClip">
+      <circle cx="256" cy="256" r="215.04"/>
+    </clipPath>
+    <radialGradient id="ballShine" cx="40%" cy="35%" r="55%">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.3"/>
+      <stop offset="100%" stop-color="#000000" stop-opacity="0.15"/>
+    </radialGradient>
+    <filter id="shadow" x="-10%" y="-10%" width="130%" height="130%">
+      <feDropShadow dx="0" dy="5.12" stdDeviation="7.68" flood-color="#000" flood-opacity="0.35"/>
+    </filter>
+  </defs>
+  
+  <!-- Ball shadow -->
+  <ellipse cx="256" cy="460.288" rx="150.528" ry="17.2032" fill="rgba(0,0,0,0.2)"/>
+  
+  <!-- Main ball -->
+  <circle cx="256" cy="256" r="215.04" fill="#ffffff" stroke="#222" stroke-width="4.096" filter="url(#shadow)"/>
+  
+  <!-- Football pattern (pentagons and hexagons) -->
+  <g clip-path="url(#ballClip)">
+    <!-- Center pentagon -->
+    <polygon points="256,217.2928 292.5568,243.0976 279.6544,286.1056 232.3456,286.1056 219.4432,243.0976" fill="#222"/>
+    
+    <!-- Top pentagon -->
+    <polygon points="256,137.728 292.5568,163.5328 279.6544,200.0896 232.3456,200.0896 219.4432,163.5328" fill="#222"/>
+    
+    <!-- Top-right pentagon -->
+    <polygon points="335.5648,180.736 363.52,212.992 350.6176,249.5488 318.3616,249.5488 316.2112,208.6912" fill="#222"/>
+    
+    <!-- Top-left pentagon -->
+    <polygon points="176.4352,180.736 148.48000000000002,212.992 161.38240000000002,249.5488 193.6384,249.5488 195.78879999999998,208.6912" fill="#222"/>
+    
+    <!-- Bottom-right pentagon -->
+    <polygon points="324.8128,288.256 350.6176,273.2032 363.52,309.76 331.264,337.7152 299.008,324.8128" fill="#222"/>
+    
+    <!-- Bottom-left pentagon -->
+    <polygon points="187.18720000000002,288.256 161.38240000000002,273.2032 148.48000000000002,309.76 180.736,337.7152 212.992,324.8128" fill="#222"/>
+    
+    <!-- Bottom pentagon -->
+    <polygon points="256,374.272 292.5568,348.4672 279.6544,316.2112 232.3456,316.2112 219.4432,348.4672" fill="#222"/>
+    
+    <!-- Seam lines -->
+    <line x1="219.4432" y1="243.0976" x2="193.6384" y2="249.5488" stroke="#222" stroke-width="3.072" fill="none"/>
+    <line x1="292.5568" y1="243.0976" x2="318.3616" y2="249.5488" stroke="#222" stroke-width="3.072" fill="none"/>
+    <line x1="232.3456" y1="286.1056" x2="212.992" y2="324.8128" stroke="#222" stroke-width="3.072" fill="none"/>
+    <line x1="279.6544" y1="286.1056" x2="299.008" y2="324.8128" stroke="#222" stroke-width="3.072" fill="none"/>
+    <line x1="256" y1="217.2928" x2="256" y2="200.0896" stroke="#222" stroke-width="3.072" fill="none"/>
+    <line x1="256" y1="286.1056" x2="256" y2="316.2112" stroke="#222" stroke-width="3.072" fill="none"/>
+  </g>
+  
+  <!-- Shine overlay -->
+  <circle cx="256" cy="256" r="215.04" fill="url(#ballShine)"/>
+  
+  <!-- Text banner background -->
+  <rect x="101.1712" y="180.736" width="309.6576" height="150.528" rx="10.24" fill="rgba(17,24,39,0.85)"/>
+  
+  <!-- Arabic text: بمبا -->
+  <text x="256" y="249.5488" text-anchor="middle" dominant-baseline="middle" 
+        font-family="Arial, Tahoma, sans-serif" font-weight="bold" font-size="66.56" fill="#ffffff" direction="rtl">بمبا</text>
+  
+  <!-- English text: BMBA -->
+  <text x="256" y="294.7072" text-anchor="middle" dominant-baseline="middle" 
+        font-family="Arial, Helvetica, sans-serif" font-weight="bold" font-size="43.52" fill="#D4AF37" letter-spacing="7.68">BMBA</text>
+</svg>
