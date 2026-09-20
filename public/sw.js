@@ -8,6 +8,40 @@ self.addEventListener('install', (event) => {
   self.skipWaiting();
 });
 
+// ——— إشعارات Web Push: استقبال الإشعار حتى مع إغلاق التطبيق ———
+self.addEventListener('push', (event) => {
+  let data = { title: 'بمبا لتوقعات', body: '', url: '/' };
+  try {
+    const parsed = event.data ? event.data.json() : {};
+    data = { ...data, ...parsed };
+  } catch (e) {
+    if (event.data) data.body = event.data.text();
+  }
+  event.waitUntil(
+    self.registration.showNotification(data.title, {
+      body: data.body,
+      icon: data.icon || '/icon-192.png',
+      badge: data.badge || '/icon-192.png',
+      data: { url: data.url || '/' },
+      tag: 'bomba-notif',
+      vibrate: [100, 50, 100],
+    })
+  );
+});
+
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  const url = (event.notification.data && event.notification.data.url) || '/';
+  event.waitUntil(
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
+      for (const client of clientList) {
+        if ('focus' in client) return client.focus();
+      }
+      return self.clients.openWindow(url);
+    })
+  );
+});
+
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((keys) =>
