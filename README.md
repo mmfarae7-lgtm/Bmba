@@ -1,36 +1,75 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# بومبا لتوقعات (Bmba Predictions) ⚽🏆
 
-## Getting Started
+تطبيق ويب (PWA) باللغة العربية لتوقّع نتائج مباريات كرة القدم، مع مكافآت وتحديات ودردشة.
 
-First, run the development server:
+**الموقع الحي:** https://bmba-app.vercel.app
+
+## المزايا
+
+- توقّع نتائج المباريات من الدوريات الخمس الكبرى + دوري روشن السعودي (نتائج مباشرة).
+- نظام مكافآت: نقاط لكل توقع صحيح + هدية ترحيبية 100 نقطة + متجر مكافآت.
+- تحديات: **تحدّي الأبطال** (خماسية الدوريات الكبرى + روشن + دوري الأبطال)،
+  **بطولة المدرب** (234+ لاعبًا عالميًا من كل المراكز)،
+  **حلبة التوقعات** (مباريات خاصة لكل حلبة)،
+  **جاوب واكسب** (160+ سؤالًا متنوعًا بين المستخدمين).
+- دردشة عامة، لوحة قادة، ملف شخصي، سياسة سرية وشروط.
+
+## التقنيات
+
+- [Next.js 16](https://nextjs.org) (App Router) + React 19
+- قاعدة بيانات [Turso](https://turso.tech) (libSQL)
+- PWA: Manifest + Service Worker + تثبيت (Add to Home Screen)
+- نشر على Vercel
+
+## التشغيل محليًا
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm install
+npm run dev   # http://localhost:3000
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## الأيقونات والشعارات
 
-You can start editing the page by modifying `app/page.js`. The page auto-updates as you edit the file.
+شعار المشروع الأصلي هو `public/logo.png` (ينسخ منه جميع الأيقونات).
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+لإعادة توليد الأيقونات بأحجام جديدة (بعد تغيير الشعار):
 
-## Learn More
+```bash
+node scripts/generate-icons.js
+```
 
-To learn more about Next.js, take a look at the following resources:
+الملفات الناتجة:
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+| الملف | الاستخدام |
+|---|---|
+| `icon-192.png` / `icon-512.png` | أيقونات PWA (تثبيت المتصفح) |
+| `icon-512-maskable.png` | أيقونة «مانحة» آمنة القص (Android) |
+| `apple-touch-icon.png` | أيقونة iOS (180×180) |
+| `favicon.ico` | فافيكون التبويبات (في `app/`) |
+| `icon-1024.png` | أيقونة المتاجر (Google Play / App Store) |
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## الإطلاق في المتاجر
 
-## Deploy on Vercel
+- **Google Play (TWA/APK):** انظر [`android/README.md`](android/README.md)
+  و`android/twa-manifest.json` وملف `.github/workflows/android-apk.yml`.
+- **Apple App Store:** انظر [`store/ios-wrapper.md`](store/ios-wrapper.md).
+- **قوائم المتاجر:** [`store/google-play-listing.md`](store/google-play-listing.md)
+  و[`store/apple-app-store-listing.md`](store/apple-app-store-listing.md).
+- **مواصفات المنتج:** [`PRD.md`](PRD.md).
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## سياسة الخصوصية
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- صفحة في التطبيق: `/privacy` (نصوص من `lib/i18n.js`).
+- نسخة المتاجر: `store/privacy-and-data-safety.md`.
+
+## الأوامر
+
+```bash
+npm run dev      # تطوير
+npm run build    # بناء الإنتاج
+npm run start    # تشغيل الإنتاج محليًا
+```
+
+---
+
+التوثيق الكامل لجلسات العمل ومفاتيح الإدارة المرجعية في [`HANDOFF.md`](HANDOFF.md).

@@ -1,0 +1,70 @@
+name: Android APK/AAB Build (TWA)
+
+on:
+  workflow_dispatch: # يدويًا من التبويب Actions
+  push:
+    branches: [master]
+    paths:
+      - 'android/**'
+      - 'public/manifest.json'
+      - 'public/icon-*.png'
+      - 'app/favicon.ico'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Setup Java (JDK 17)
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Cache bubblewrap
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/bubblewrap
+          key: bw-${{ hashFiles('android/twa-manifest.json') }}
+
+      - name: Install Bubblewrap
+        run: npm install -g @bubblewrap/cli
+
+      - name: Generate Android project from TWA manifest
+        run: bubblewrap init --manifest ./android/twa-manifest.json --directory ./android/project
+
+      - name: Build AAB (Play Store)
+        run: |
+          cd android/project
+          bubblewrap build --skipPwaValidation --bundles aab
+          cp app/build/outputs/bundle/release/app-release-bundle.aab ../bmba-app-release-bundle.aab || true
+
+      - name: Build APK (direct install)
+        run: |
+          cd android/project
+          bubblewrap build --skipPwaValidation --bundles apk
+          cp app/build/outputs/apk/release/app-release-signed.apk ../bmba-app-release-signed.apk || true
+
+      - name: Upload AAB artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: bmba-aab-play-store
+          path: android/*.aab
+          if-no-files-found: error
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: bmba-apk-direct
+          path: android/*.apk
+          if-no-files-found: warn

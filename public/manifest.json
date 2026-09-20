@@ -1,5 +1,5 @@
 {
-  "name": "توقعات بمبا",
+  "name": "بومبا لتوقعات",
   "short_name": "بمبا",
   "description": "تطبيق توقعات مباريات كرة القدم الدقيقة والمباشرة والنقاط والدردشة",
   "lang": "ar",
@@ -7,9 +7,12 @@
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
+  "display_override": ["standalone", "minimal-ui"],
   "orientation": "portrait",
   "background_color": "#111827",
   "theme_color": "#111827",
+  "id": "/",
+  "categories": ["sports", "games", "entertainment"],
   "icons": [
     {
       "src": "/icon-192.png",
@@ -24,7 +27,7 @@
       "purpose": "any"
     },
     {
-      "src": "/icon-512.png",
+      "src": "/icon-512-maskable.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "maskable"

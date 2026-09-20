@@ -43,6 +43,9 @@ proxy.js        Middleware: توجيه / ↔ /onboarding بالكوكي bomba-on
 | `lib/auth.js` | JWT + requireAuth / requireAdmin / requireSuperAdmin |
 | `lib/questions.js` | مصرف 160 سؤالاً رياضياً + pickRandomQuestions (عشوائية لكل مشترك) |
 | `lib/rewards.js` | claim / ensureInviteCode |
+| `scripts/generate-icons.js` | إعادة توليد أيقونات PWA/المتاجر من `public/logo.png` |
+| `android/twa-manifest.json` | إعدادات حزمة أندرويد (Bubblewrap/TWA) |
+| `.github/workflows/android-apk.yml` | بناء AAB/APK تلقائياً على GitHub Actions |
 | `app/api/rewards/*` | ads (لا يمنع حالياً)، questions، share، invite، notifications |
 | `app/rewards/page.js` | صفحة المكافئات «اكسب بمبات» |
 | `backfill-welcome.js` | سكربت منح 100 بمبا للأعضاء الحاليين (محلي + سحابي) |
@@ -138,6 +141,34 @@ git push origin master
 - هذه المباريات **خاصة بالحلبة فقط** — لا تُغذّي التوقعات العامة أبداً (لا كُتب إلى `predictions`).
 - المالك لديه زر 🔄 تحديث المباريات (متاح داخل تفاصيل الحلبة للماستر فقط).
 - منطق الربط في `lib/arena.js` (يطلب API فقط إذا كان عدد المباريات القادمة أقل من 10).
+
+---
+
+## 🔧 أيقونات PWA وتهيئة المتاجر (منفَّذ مؤخراً)
+
+- **السبب الجذري:** كل أيقونات PWA كانت بحجم 2000×2000 رغم الإعلان عنها 192/512 →
+  تثبيت المتصفح لا يجد حجمًا صحيحًا → شعار قديم/مفقود عند التثبيت وعلى النطاق القديم.
+- **الحل:** `node scripts/generate-icons.js` يولّد من `public/logo.png` (هو الشعار الأصلي
+  `BMBA_20241101_172651`) كل المقاسات الصحيحة:
+  `icon-192.png`, `icon-512.png`, `icon-512-maskable.png` (خلفية صلبة)،
+  `apple-touch-icon.png` (180)، `icon-1024.png` (المتاجر)، `favicon-16/32.png`,
+  و`app/favicon.ico` متعدد الأحجام.
+- **manifest.json:** أُضيفت أيقونة `maskable` وأبعاد صحيحة + `id` و`display_override`.
+- **layout.js:** إشارة `favicon.ico` + `apple-touch-icon` + أيقونات صحيحة في metadata.
+- **sw.js:** كاش أصبح `bomba-v3` (يُبطل مخزون الأيقونات القديمة تلقائياً —
+  مهم للنطاق القديم).
+- **حجم شعارات الفرق:** أصبح «متوسط» — `.mc-team .team-logo` 42px، `.mteam .team-logo`
+  34px، `.md-logo` 46px، `.pm-logo` 42px.
+- **الرفع للمتاجر:**
+  - Google Play: `android/twa-manifest.json` + `.github/workflows/android-apk.yml`
+    يبني AAB/APK عبر Bubblewrap → رفع الملفات في GitHub Actions.
+  - App Store: خطوات حزمة iOS في `store/ios-wrapper.md`.
+  - القوائم: `store/google-play-listing.md` + `store/apple-app-store-listing.md`.
+  - البيانات والخصوصية: `store/privacy-and-data-safety.md`.
+  - مواصفات المنتج: `PRD.md`.
+
+> ⚠️ عند تغيير النطاق مستقبلاً: عدّل `android/twa-manifest.json` (host/start_url)
+> ثم أعد تشغيل workflow البناء.
 
 ---
 

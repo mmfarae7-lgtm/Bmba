@@ -1,0 +1,39 @@
+{
+  "host": "bmba-app.vercel.app",
+  "start_url": "https://bmba-app.vercel.app/",
+  "app_name": "بمبا للوقعات",
+  "short_name": "بمبا",
+  "display": "standalone",
+  "orientation": "portrait",
+  "theme_color": "#111827",
+  "background_color": "#111827",
+  "navigation_color": "#111827",
+  "navigation_bar_color": "#111827",
+  "navigation_bar_divider_color": "#111827",
+  "launch_screen_background_color": "#111827",
+  "icon_url": "https://bmba-app.vercel.app/icon-512-maskable.png",
+  "maskable_icons": [
+    "https://bmba-app.vercel.app/icon-512-maskable.png",
+    "https://bmba-app.vercel.app/icon-512.png"
+  ],
+  "monochrome_icons": [
+    "https://bmba-app.vercel.app/icon-512-maskable.png"
+  ],
+  "splash_screen_background_color": "#111827",
+  "content_urls": [
+    {
+      "origin": "https://bmba-app.vercel.app"
+    },
+    {
+      "origin": "https://*.vercel.app"
+    }
+  ],
+  "features": {
+    "location_delegation": "none",
+    "play_billing_identity": "none",
+    "intent_handling": []
+  },
+  "prefer_related_applications": false,
+  "enableNotifications": true,
+  "web_manifest_url": "https://bmba-app.vercel.app/manifest.json"
+}
