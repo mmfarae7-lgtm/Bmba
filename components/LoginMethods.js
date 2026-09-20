@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useI18n } from '../lib/i18n';
+import { DIAL_CODES } from '../lib/countries';
 
 export default function LoginMethods({ onDone, withRegisterLink = true, onNeedAccount }) {
   const { t } = useI18n();
@@ -11,6 +12,14 @@ export default function LoginMethods({ onDone, withRegisterLink = true, onNeedAc
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [toast, setToast] = useState('');
+  // وضع الدخول برمز الجوال (SMS/واتساب)
+  const [otpMode, setOtpMode] = useState(false);
+  const [otpPhone, setOtpPhone] = useState('');
+  const [otpDial, setOtpDial] = useState('+966');
+  const [otpCode, setOtpCode] = useState('');
+  const [otpDev, setOtpDev] = useState('');
+  const [otpWaitCode, setOtpWaitCode] = useState(false); // هل أُرسل الرمز وننتظر إدخاله
+  const [otpToken, setOtpToken] = useState('');
 
   useEffect(() => {
     try {
@@ -55,6 +64,71 @@ export default function LoginMethods({ onDone, withRegisterLink = true, onNeedAc
     }
   };
 
+  const sendOtp = async () => {
+    setError('');
+    const p = otpPhone.trim();
+    if (!p || p.replace(/\D/g, '').length < 7) {
+      setError(t('ld_label'));
+      return;
+    }
+    setLoading(true);
+    try {
+      const res = await fetch('/api/auth/send-otp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone: p, phone_code: otpDial, purpose: 'login' }),
+      });
+      const data = await res.json();
+      if (!res.ok) { setError(data.error || t('ld_enter')); setLoading(false); return; }
+      setOtpDev(data.devCode || '');
+      setOtpWaitCode(true);
+      setOtpCode('');
+      setLoading(false);
+    } catch {
+      setError(t('ld_enter'));
+      setLoading(false);
+    }
+  };
+
+  const enterWithOtp = async () => {
+    setError('');
+    if (!otpCode.trim()) { setError(t('ld_otp_required')); return; }
+    if (!otpToken) {
+      // التحقق من الرمز أولاً للحصول على توكن صالح
+      setLoading(true);
+      try {
+        const res = await fetch('/api/auth/verify-otp', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ phone: otpPhone.trim(), phone_code: otpDial, code: otpCode.trim(), purpose: 'login' }),
+        });
+        const data = await res.json();
+        if (!res.ok) { setError(data.error || t('ld_otp_required')); setLoading(false); return; }
+        setOtpToken(data.token);
+        setLoading(false);
+      } catch {
+        setError(t('ld_otp_required'));
+        setLoading(false);
+        return;
+      }
+    }
+    // الدخول باستخدام التوكن
+    setLoading(true);
+    try {
+      const res = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ otp_token: otpToken, phone: otpPhone.trim(), phone_code: otpDial }),
+      });
+      const data = await res.json();
+      if (!res.ok) { setError(data.error || t('ld_enter')); setLoading(false); return; }
+      finish(data.user);
+    } catch {
+      setError(t('ld_enter'));
+      setLoading(false);
+    }
+  };
+
   const enterGuest = async () => {
     setError('');
     setLoading(true);
@@ -87,6 +161,12 @@ export default function LoginMethods({ onDone, withRegisterLink = true, onNeedAc
     }
   };
 
+  // زر «التسجيل برقم التلفون»: يفتح نموذج التسجيل على تبويب الجوال
+  const goPhoneRegister = () => {
+    if (onNeedAccount) { onNeedAccount(); return; }
+    router.push('/register?method=phone');
+  };
+
   return (
     <div className="ad-card">
       {toast && <div className="topbar-toast">{toast}</div>}
@@ -95,37 +175,97 @@ export default function LoginMethods({ onDone, withRegisterLink = true, onNeedAc
 
       <p className="ad-sub">{t('ld_sub')}</p>
 
-      <form className="ad-form" onSubmit={handleLogin}>
-        <div className="ad-field">
-          <label>{t('ld_label')}</label>
-          <input
-            type="text"
-            dir="ltr"
-            style={{ textAlign: 'center' }}
-            value={identifier}
-            onChange={(e) => setIdentifier(e.target.value)}
-            placeholder={t('ld_ph')}
-            required
-            autoComplete="username"
-          />
-        </div>
-        <div className="ad-field">
-          <label>{t('ld_pass')}</label>
-          <input
-            type="password"
-            style={{ textAlign: 'center' }}
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            placeholder={t('ld_pass_ph')}
-            required
-            autoComplete="current-password"
-          />
-        </div>
-        {error && <div className="error-msg">{error}</div>}
-        <button type="submit" className="ad-submit" disabled={loading}>
-          {loading ? t('ld_loading') : t('ld_enter')}
-        </button>
-      </form>
+      {!otpMode ? (
+        <form className="ad-form" onSubmit={handleLogin}>
+          <div className="ad-field">
+            <label>{t('ld_label')}</label>
+            <input
+              type="text"
+              dir="ltr"
+              style={{ textAlign: 'center' }}
+              value={identifier}
+              onChange={(e) => setIdentifier(e.target.value)}
+              placeholder={t('ld_ph')}
+              required
+              autoComplete="username"
+            />
+          </div>
+          <div className="ad-field">
+            <label>{t('ld_pass')}</label>
+            <input
+              type="password"
+              style={{ textAlign: 'center' }}
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder={t('ld_pass_ph')}
+              required
+              autoComplete="current-password"
+            />
+          </div>
+          {error && <div className="error-msg">{error}</div>}
+          <button type="submit" className="ad-submit" disabled={loading}>
+            {loading ? t('ld_loading') : t('ld_enter')}
+          </button>
+        </form>
+      ) : (
+        <form className="ad-form" onSubmit={(e) => { e.preventDefault(); enterWithOtp(); }}>
+          <div className="ad-field">
+            <label>{t('ld_phone')}</label>
+            <div className="phone-row">
+              <select value={otpDial} onChange={(e) => setOtpDial(e.target.value)} className="phone-code">
+                {DIAL_CODES.map(([code, label]) => (
+                  <option key={code} value={code}>{code} {label}</option>
+                ))}
+              </select>
+              <input
+                type="tel"
+                dir="ltr"
+                style={{ textAlign: 'center' }}
+                value={otpPhone}
+                disabled={otpWaitCode}
+                onChange={(e) => setOtpPhone(e.target.value)}
+                placeholder="5XXXXXXXX"
+                required
+                autoComplete="tel-national"
+              />
+            </div>
+          </div>
+          {otpWaitCode && (
+            <div className="ad-field">
+              <label>{t('reg_otp_code_ph')}</label>
+              <input
+                type="text"
+                inputMode="numeric"
+                dir="ltr"
+                style={{ textAlign: 'center', letterSpacing: 6 }}
+                value={otpCode}
+                maxLength={6}
+                onChange={(e) => setOtpCode(e.target.value.replace(/[^0-9]/g, ''))}
+                placeholder={t('reg_otp_code_ph')}
+                required
+              />
+            </div>
+          )}
+          {otpDev && (
+            <div className="otp-dev" style={{ marginBottom: 8 }}>{t('ld_otp_dev')} <b>{otpDev}</b></div>
+          )}
+          {error && <div className="error-msg">{error}</div>}
+          {!otpWaitCode ? (
+            <button type="button" className="btn-ghost" style={{ width: '100%' }} onClick={sendOtp} disabled={loading}>
+              {loading ? t('ld_loading') : t('ld_otp_send')}
+            </button>
+          ) : (
+            <button type="submit" className="ad-submit" disabled={loading}>
+              {loading ? t('ld_loading') : t('ld_otp_enter')}
+            </button>
+          )}
+        </form>
+      )}
+
+      <button type="button" className="link-btn ad-link" style={{ marginTop: 10 }}
+        onClick={() => { setOtpMode(!otpMode); setError(''); setOtpWaitCode(false); setOtpToken(''); setOtpDev(''); setOtpCode(''); }}>
+        {otpMode ? t('ld_otp_back') : t('ld_otp_toggle')}
+      </button>
 
       <div className="ad-or"><span>{t('ld_or')}</span></div>
 
@@ -136,7 +276,7 @@ export default function LoginMethods({ onDone, withRegisterLink = true, onNeedAc
         onClick={() => socialLogin('facebook')} disabled={loading} />
 
       <AdButton tone="phone" icon={<span className="ion">📱</span>} label={t('ld_phone')}
-        onClick={() => showToast(t('ld_soon'))} disabled={loading} />
+        onClick={goPhoneRegister} disabled={loading} />
 
       <AdButton tone="guest" icon={<span className="ion">👤</span>} label={t('ld_guest')}
         note={t('ld_guest_note')} onClick={enterGuest} disabled={loading} />

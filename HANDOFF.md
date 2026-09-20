@@ -204,6 +204,33 @@ git push origin master
 
 ---
 
+## 📱 التحقق برمز SMS / واتساب (OTP) — منفَّذ
+
+- **التدفق:** التسجيل بالجوال الآن يتطلب تحقق «الرمز» أولاً، والدخول يدعم رمزاً بديلاً
+  عن كلمة المرور:
+  1. `POST /api/auth/send-otp` — يولّد رمزاً (6 أرقام) صالحاً **10 دقائق** ويحفظه في جدول `otps`
+     (رقم واحد الاستخدام، 5 محاولات كحد أقصى، مهلة دقيقة بين إعادة الإرسال) ثم يرسله.
+  2. `POST /api/auth/verify-otp` — يتحقق من الرمز ويُصدر توكن `JWT` قصيراً (15 دقيقة)
+     مربوطاً بالرقم والغرض (`register` أو `login`).
+  3. التسجيل: `app/api/auth/register/route.js` يتطلب `otp_token` صالحاً عند التسجيل بالجوال
+     (الإيميل كما هو).
+  4. الدخول: `app/api/auth/login/route.js` يقبل `otp_token` + `phone` + `phone_code` للدخول بالرمز.
+- **الواجهة:** `components/RegisterForm.js` (تبويب الجوال: أرسل الرمز ← أدخل الرمز ← تم التحقق)
+  + `components/LoginMethods.js` (زر «📲 الدخول برمز الجوال (SMS/واتساب)»).
+- **الإرسال الحقيقي (Twilio):** عند توفر المفاتيح التالية في Vercel يُرسل فعلياً عبر
+  Twilio Messages API (إما SMS أو واتساب حسب `SMS_CHANNEL`):
+  - `TWILIO_ACCOUNT_SID` و`TWILIO_AUTH_TOKEN` (من console.twilio.com).
+  - `TWILIO_FROM_PHONE` (رقم Twilio بصيغة `+1...` لـ SMS).
+  - `TWILIO_WHATSAPP_FROM` (اختياري — مرسل واتساب `whatsapp:+1415...`).
+  - `SMS_CHANNEL` = `sms` أو `whatsapp` (افتراضي `auto`: واتساب فقط إذا توفر مرسله).
+- **وضع تجريبي (بدون مفتاح):** يعمل الآن مباشرة — يُعيد `devCode` في استجابة
+  `send-otp` وتظهر الواجهة «وضع تجريبي: الرمز هو 123456» حتى يمكن اختبار كل التدفقات.
+  جرّب: `post /api/auth/send-otp {phone,phone_code} → devCode → verify-otp → register/login`.
+- **ملف المنطق:** `lib/otp.js` (توليد/تخزين/تحقق + إرسال Twilio بـ `fetch`) — جدول `otps`
+  يُنشأ تلقائياً في `lib/db.js`.
+
+---
+
 ## 📌 ملاحظات أمان مهمة
 
 1. دوّن قيم `TURSO_*` و `JWT_SECRET` في مكان آمن (وليس داخل هذا الملف).

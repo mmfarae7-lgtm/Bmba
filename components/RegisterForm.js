@@ -22,6 +22,13 @@ export default function RegisterForm({ onDone }) {
   const [invite, setInvite] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  // التحقق برمز SMS/واتساب
+  const [otpStep, setOtpStep] = useState(false);   // هل نعرض حقل إدخال الرمز
+  const [otpCode, setOtpCode] = useState('');
+  const [otpDev, setOtpDev] = useState('');        // الرمز التجريبي (بدون مزوّد إرسال)
+  const [otpToken, setOtpToken] = useState('');    // توكن التحقق الصادر بعد نجاح الرمز
+  const [otpSending, setOtpSending] = useState(false);
+  const [otpErr, setOtpErr] = useState('');
 
   // تعبئة كود الدعوة مسبقاً من رابط المشاركة ?ref=<CODE>
   useEffect(() => {
@@ -29,6 +36,8 @@ export default function RegisterForm({ onDone }) {
       const params = new URLSearchParams(window.location.search);
       const ref = params.get('ref') || params.get('invite') || params.get('invite_code');
       if (ref) setInvite(String(ref).trim());
+      const m = params.get('method');
+      if (m === 'email' || m === 'phone') setMethod(m);
     } catch {}
   }, []);
 
@@ -52,6 +61,65 @@ export default function RegisterForm({ onDone }) {
     reader.readAsDataURL(file);
   };
 
+  // إرسال رمز التحقق (SMS/واتساب) لرقم الجوال
+  const sendOtp = async () => {
+    setOtpErr('');
+    const p = method === 'phone' ? phone.trim() : '';
+    if (!p || p.length < 7) {
+      setOtpErr(t('reg_phone_email_missing'));
+      return;
+    }
+    setOtpSending(true);
+    try {
+      const res = await fetch('/api/auth/send-otp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone: p, phone_code: phoneCode, purpose: 'register' }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setOtpErr(data.error || 'تعذّر إرسال الرمز');
+        setOtpSending(false);
+        return;
+      }
+      setOtpDev(data.devCode || '');
+      setOtpStep(true);
+      setOtpCode('');
+      setOtpSending(false);
+      setLoading(false);
+    } catch {
+      setOtpErr('تعذّر إرسال الرمز');
+      setOtpSending(false);
+    }
+  };
+
+  // التحقق من الرمز واستخراج توكن صالح
+  const confirmOtp = async () => {
+    setOtpErr('');
+    if (!otpCode.trim()) { setOtpErr(t('ld_pass_ph')); return; }
+    setLoading(true);
+    try {
+      const res = await fetch('/api/auth/verify-otp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone: phone.trim(), phone_code: phoneCode, code: otpCode.trim(), purpose: 'register' }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setOtpErr(data.error || 'الرمز غير صحيح');
+        setLoading(false);
+        return;
+      }
+      setOtpToken(data.token);
+      setOtpStep(false);
+      setOtpDev('');
+      setLoading(false);
+    } catch {
+      setOtpErr('تعذّر التحقق من الرمز');
+      setLoading(false);
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
@@ -72,6 +140,10 @@ export default function RegisterForm({ onDone }) {
       setError(t('reg_email_invalid') || 'البريد الإلكتروني غير صحيح');
       return;
     }
+    if (method === 'phone' && !otpToken) {
+      setError(t('reg_otp_required'));
+      return;
+    }
     if (password !== confirmPassword) {
       setError(t('reg_mismatch'));
       return;
@@ -89,6 +161,7 @@ export default function RegisterForm({ onDone }) {
       avatar: avatar || null,
       password,
       invite_code: invite.trim() || null,
+      otp_token: method === 'phone' ? otpToken : null,
     };
 
     try {
@@ -198,11 +271,52 @@ export default function RegisterForm({ onDone }) {
                 dir="ltr"
                 style={{ textAlign: 'center' }}
                 value={phone}
+                disabled={Boolean(otpToken)}
                 onChange={(e) => setPhone(e.target.value)}
                 placeholder="5XXXXXXXX"
                 required
               />
             </div>
+
+            {!otpToken && (
+              <div className="otp-actions">
+                {otpStep ? (
+                  <>
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      dir="ltr"
+                      placeholder={t('reg_otp_code_ph')}
+                      value={otpCode}
+                      maxLength={6}
+                      onChange={(e) => setOtpCode(e.target.value.replace(/[^0-9]/g, ''))}
+                      className="otp-input"
+                      style={{ textAlign: 'center', letterSpacing: 6 }}
+                    />
+                    <button type="button" className="btn-ghost" onClick={confirmOtp} disabled={loading}>
+                      {loading ? t('reg_loading') : t('reg_otp_verify')}
+                    </button>
+                    <button type="button" className="otp-resend" onClick={sendOtp} disabled={otpSending}>
+                      {t('reg_otp_resend')}
+                    </button>
+                  </>
+                ) : (
+                  <button type="button" className="btn-ghost" onClick={sendOtp} disabled={otpSending}>
+                    {otpSending ? t('reg_loading') : t('reg_otp_send')}
+                  </button>
+                )}
+                {otpDev && (
+                  <span className="otp-dev">{t('reg_otp_dev')} <b>{otpDev}</b></span>
+                )}
+                {otpErr && <span className="error-msg" style={{ marginTop: 6 }}>{otpErr}</span>}
+              </div>
+            )}
+
+            {otpToken && (
+              <div className="otp-ok">
+                ✅ {t('reg_otp_verified')}
+              </div>
+            )}
           </div>
         ) : (
           <div className="form-group">

@@ -5,7 +5,7 @@ const { generateToken } = require('../../../../lib/auth');
 
 export async function POST(req) {
   try {
-    const { name, phone, phone_code, country, gender, birth_date, avatar, email, password, invite_code } = await req.json();
+    const { name, phone, phone_code, country, gender, birth_date, avatar, email, password, invite_code, otp_token } = await req.json();
     const trimmedName = String(name || '').trim();
     if (!trimmedName || !password) {
       return NextResponse.json({ error: 'أدخل جميع البيانات المطلوبة' }, { status: 400 });
@@ -25,6 +25,13 @@ export async function POST(req) {
       }
       finalPhone = 'u' + Date.now() + Math.floor(Math.random() * 1000);
     } else {
+      // التسجيل برقم جوال حقيقي يتطلب التحقق من رمز SMS/واتساب مسبقاً
+      const { checkOtpToken, phoneKey } = require('../../../../lib/otp');
+      const key = phoneKey(phone, phone_code);
+      const otpPayload = checkOtpToken(otp_token, key, 'register');
+      if (!otpPayload) {
+        return NextResponse.json({ error: 'تحقق من رقم الجوال برمز SMS أولاً' }, { status: 400 });
+      }
       const existing = await db.prepare('SELECT id FROM users WHERE phone = ? OR email = ?').get(finalPhone, normalizedEmail || '');
       if (existing) {
         return NextResponse.json({ error: 'رقم الجوال أو البريد مسجل مسبقاً' }, { status: 409 });

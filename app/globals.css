@@ -1944,6 +1944,54 @@ input, button, textarea, select {
   width: 150px;
 }
 .phone-row input { flex: 1; }
+.otp-actions {
+  margin-top: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.otp-input {
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: var(--bg-input);
+  color: var(--text-primary);
+  font-size: 1.1rem;
+  font-weight: 700;
+}
+.otp-resend {
+  background: transparent;
+  border: none;
+  color: var(--accent);
+  font-weight: 700;
+  font-size: 0.85rem;
+  cursor: pointer;
+  align-self: flex-start;
+}
+.otp-resend:hover { text-decoration: underline; }
+.otp-dev {
+  display: block;
+  background: rgba(255, 193, 7, 0.12);
+  border: 1px dashed var(--accent);
+  color: var(--text-secondary);
+  padding: 8px 12px;
+  border-radius: 12px;
+  font-size: 0.85rem;
+  direction: ltr;
+  text-align: center;
+}
+.otp-dev b {
+  color: var(--accent);
+  letter-spacing: 4px;
+  font-size: 1.05rem;
+}
+.otp-ok {
+  margin-top: 10px;
+  color: var(--success, #22c55e);
+  font-weight: 700;
+  font-size: 0.9rem;
+}
 .gender-row {
   display: grid;
   grid-template-columns: 1fr 1fr;
