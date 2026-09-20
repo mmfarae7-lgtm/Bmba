@@ -1,5 +1,5 @@
 'use client';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useI18n } from '../lib/i18n';
 
@@ -11,6 +11,17 @@ export default function LoginMethods({ onDone, withRegisterLink = true, onNeedAc
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [toast, setToast] = useState('');
+
+  useEffect(() => {
+    try {
+      const p = new URLSearchParams(window.location.search);
+      const e = p.get('error');
+      if (e === 'google') setError('تعذّر تسجيل الدخول عبر جوجل، حاول مجدداً');
+      else if (e === 'facebook') setError('تعذّر تسجيل الدخول عبر فيسبوك، حاول مجدداً');
+      else if (e === 'blocked') setError('هذا الحساب محظور');
+      else if (e === 'oauth') setError('تعذّر تسجيل الدخول عبر حسابك، حاول مجدداً');
+    } catch {}
+  }, []);
 
   const showToast = (msg) => {
     setToast(msg);
@@ -53,6 +64,26 @@ export default function LoginMethods({ onDone, withRegisterLink = true, onNeedAc
     } catch {
       setError(t('onb_login_btn'));
       setLoading(false);
+    }
+  };
+
+  const socialLogin = async (provider) => {
+    if (loading) return;
+    setError('');
+    setLoading(true);
+    try {
+      const res = await fetch(`/api/auth/${provider}`);
+      const data = await res.json().catch(() => ({}));
+      if (res.ok && data.url) {
+        window.location.href = data.url;
+        return;
+      }
+      // غير مفعّل بعد → نعرض "قريباً"
+      setLoading(false);
+      showToast(t('ld_soon'));
+    } catch {
+      setLoading(false);
+      showToast(t('ld_soon'));
     }
   };
 
@@ -99,10 +130,10 @@ export default function LoginMethods({ onDone, withRegisterLink = true, onNeedAc
       <div className="ad-or"><span>{t('ld_or')}</span></div>
 
       <AdButton tone="google" icon={<GoogleIcon />} label={t('ld_google')}
-        onClick={() => showToast(t('ld_soon'))} disabled={loading} />
+        onClick={() => socialLogin('google')} disabled={loading} />
 
       <AdButton tone="facebook" icon={<FacebookIcon />} label={t('ld_facebook')}
-        onClick={() => showToast(t('ld_soon'))} disabled={loading} />
+        onClick={() => socialLogin('facebook')} disabled={loading} />
 
       <AdButton tone="phone" icon={<span className="ion">📱</span>} label={t('ld_phone')}
         onClick={() => showToast(t('ld_soon'))} disabled={loading} />

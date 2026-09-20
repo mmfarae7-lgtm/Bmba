@@ -20,7 +20,7 @@ export async function POST(req) {
     }
     const token = generateToken(user);
     const res = NextResponse.json({ 
-      user: { id: user.id, name: user.name, phone: user.phone, email: user.email, points: user.points, role: user.role, avatar: user.avatar, phone_code: user.phone_code, country: user.country, gender: user.gender, birth_date: user.birth_date, bombs: user.bombs, invite_code: user.invite_code, invited_by: user.invited_by, notifications: user.notifications, blocked: user.blocked }
+      user: { id: user.id, name: user.name, phone: user.phone, email: user.email, points: user.points, role: user.role, avatar: user.avatar, phone_code: user.phone_code, country: user.country, gender: user.gender, birth_date: user.birth_date, bombs: user.bombs, invite_code: user.invite_code, invited_by: user.invited_by, notifications: user.notifications, blocked: user.blocked, google_id: user.google_id, facebook_id: user.facebook_id }
     });
     res.cookies.set('token', token, { httpOnly: true, maxAge: 60 * 60 * 24 * 7, path: '/' });
     res.cookies.set('bomba-onboarded', '1', { maxAge: 60 * 60 * 24 * 365, path: '/' });

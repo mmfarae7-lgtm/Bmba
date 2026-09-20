@@ -9,9 +9,11 @@ export default function RegisterForm({ onDone }) {
   const router = useRouter();
   const fileRef = useRef(null);
   const [avatar, setAvatar] = useState('');
+  const [method, setMethod] = useState('phone'); // 'phone' | 'email'
   const [name, setName] = useState('');
   const [phoneCode, setPhoneCode] = useState('+966');
   const [phone, setPhone] = useState('');
+  const [email, setEmail] = useState('');
   const [country, setCountry] = useState(COUNTRIES[0]);
   const [gender, setGender] = useState('');
   const [birth, setBirth] = useState('');
@@ -54,8 +56,20 @@ export default function RegisterForm({ onDone }) {
     e.preventDefault();
     setError('');
 
-    if (!name.trim() || !phone.trim() || !country || !gender || !birth) {
+    const hasPhone = method === 'phone' ? Boolean(phone.trim()) : false;
+    const hasEmail = method === 'email' ? Boolean(email.trim()) : false;
+    const validEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(email).trim());
+
+    if (!name.trim() || !country || !gender || !birth) {
       setError(t('reg_missing'));
+      return;
+    }
+    if (!hasPhone && !hasEmail) {
+      setError(t('reg_phone_email_missing'));
+      return;
+    }
+    if (method === 'email' && !validEmail) {
+      setError(t('reg_email_invalid') || 'البريد الإلكتروني غير صحيح');
       return;
     }
     if (password !== confirmPassword) {
@@ -66,8 +80,9 @@ export default function RegisterForm({ onDone }) {
     setLoading(true);
     const payload = {
       name: name.trim(),
-      phone: phone.trim(),
-      phone_code: phoneCode,
+      phone: method === 'phone' ? phone.trim() : null,
+      email: method === 'email' ? email.trim() : null,
+      phone_code: method === 'phone' ? phoneCode : null,
       country,
       gender,
       birth_date: birth,
@@ -98,6 +113,24 @@ export default function RegisterForm({ onDone }) {
   return (
     <div className="reg-full">
       {error && <div className="error-msg">{error}</div>}
+
+      {/* تبديل طريقة التسجيل: جوال / إيميل */}
+      <div className="reg-method-tabs">
+        <button
+          type="button"
+          className={`reg-method-tab ${method === 'phone' ? 'active' : ''}`}
+          onClick={() => setMethod('phone')}
+        >
+          {t('reg_tab_phone')}
+        </button>
+        <button
+          type="button"
+          className={`reg-method-tab ${method === 'email' ? 'active' : ''}`}
+          onClick={() => setMethod('email')}
+        >
+          {t('reg_tab_email')}
+        </button>
+      </div>
 
       <form onSubmit={handleSubmit}>
         <div className="avatar-upload">
@@ -151,25 +184,40 @@ export default function RegisterForm({ onDone }) {
           />
         </div>
 
-        <div className="form-group">
-          <label>{t('reg_phone')} *</label>
-          <div className="phone-row">
-            <select value={phoneCode} onChange={(e) => setPhoneCode(e.target.value)} className="phone-code">
-              {DIAL_CODES.map(([code, label]) => (
-                <option key={code} value={code}>{code} {label}</option>
-              ))}
-            </select>
+        {method === 'phone' ? (
+          <div className="form-group">
+            <label>{t('reg_phone')} *</label>
+            <div className="phone-row">
+              <select value={phoneCode} onChange={(e) => setPhoneCode(e.target.value)} className="phone-code">
+                {DIAL_CODES.map(([code, label]) => (
+                  <option key={code} value={code}>{code} {label}</option>
+                ))}
+              </select>
+              <input
+                type="tel"
+                dir="ltr"
+                style={{ textAlign: 'center' }}
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                placeholder="5XXXXXXXX"
+                required
+              />
+            </div>
+          </div>
+        ) : (
+          <div className="form-group">
+            <label>{t('reg_email')} *</label>
             <input
-              type="tel"
+              type="email"
               dir="ltr"
               style={{ textAlign: 'center' }}
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              placeholder="5XXXXXXXX"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder={t('reg_email_ph')}
               required
             />
           </div>
-        </div>
+        )}
 
         <div className="form-group">
           <label>{t('reg_country')} *</label>

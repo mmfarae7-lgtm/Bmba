@@ -463,6 +463,32 @@ input, button, textarea, select {
   font-size: 0.9rem;
 }
 
+.reg-method-tabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 18px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 4px;
+}
+.reg-method-tab {
+  flex: 1;
+  padding: 9px 8px;
+  border: none;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--text-secondary);
+  font-weight: 800;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.reg-method-tab.active {
+  background: var(--accent);
+  color: #fff;
+}
+
 .form-group { margin-bottom: 14px; }
 .form-group label {
   display: block;

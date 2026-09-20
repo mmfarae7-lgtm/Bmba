@@ -172,6 +172,38 @@ git push origin master
 
 ---
 
+## 📧 المصادقة: تسجيل بالإيميل + ربط جوجل وفيسبوك (منفَّذ)
+
+- **تسجيل بالإيميل:** محور البريد الإلكتروني في `components/RegisterForm.js` هو
+  تبديل «📱 رقم الجوال / ✉️ البريد الإلكتروني» (`reg-method-tabs`). وضع الإيميل يُرسل
+  `phone: null` و`email` فيطلب المسار في الانشئ `app/api/auth/register/route.js` فحص
+  البريد ويولّد هاتفاً وهمياً (`u<timestamp><rand>`) لملء عمود `phone UNIQUE NOT NULL`.
+- **دخول بالإيميل:** `app/api/auth/login/route.js` يبحث في `phone` و`email` و`name`
+  معاً — بالتالي أدخل البريد أو الجوال مباشرة. حقول `ld_label`/`ld_ph` أصبحت
+  «البريد الإلكتروني / رقم الجوال».
+- **ربط جوجل وفيسبوك (جاهز للتفعيل):**
+  - `lib/social-auth.js`: `buildAuthUrl`, `exchangeCode`, `findOrCreateSocialUser`
+    (ربط حساب موجود بنفس البريد، أو إنشاء جديد + هدية 100 بمبا + كود دعوة).
+  - مسارات OAuth كاملة: `app/api/auth/google/route.js` + `callback/route.js`،
+    وكذلك `facebook/...`.
+  - المستخدم الجديد: عمودا `google_id` و`facebook_id` في `users`
+    (ترحيل تلقائي في `lib/db.js` + فهارس فريدة).
+  - أزرار الواجهة (`components/LoginMethods.js`) تستدعي المسارات؛ إذا لم تُهيَّأ
+    المفاتيح تظهر «قريباً 🔜» تلقائياً.
+- **لتفعيل جوجل:** أنشئ مشروع OAuth في Google Cloud Console، أضف URI المعاد:
+  `https://bmba-app.vercel.app/api/auth/google/callback`، ثم ضع في Vercel:
+  `GOOGLE_CLIENT_ID` و`GOOGLE_CLIENT_SECRET`.
+- **لتفعيل فيسبوك:** أنشئ تطبيقاً في Meta for Developers، أضف:
+  `https://bmba-app.vercel.app/api/auth/facebook/callback` كـ Valid OAuth Redirect،
+  ثم ضع في Vercel: `FACEBOOK_APP_ID` و`FACEBOOK_APP_SECRET`.
+- **بديل تخزين الإعدادات:** يمكن تخزين كل مفتاح كإعداد في جدول `settings`
+  (`google_client_id`, `google_client_secret`, `facebook_app_id`,
+  `facebook_app_secret`) بدلاً من متغيرات البيئة — يُقرأ تلقائياً.
+- **رسائل الخطأ:** `callback/*/route.js` تُعيد تحويلاً إلى `/login?error=...`
+  و`LoginMethods` يعرض رسالة عربية مناسبة.
+
+---
+
 ## 📌 ملاحظات أمان مهمة
 
 1. دوّن قيم `TURSO_*` و `JWT_SECRET` في مكان آمن (وليس داخل هذا الملف).
