@@ -16,6 +16,48 @@ function tomorrowStr() {
   return d.toLocaleDateString('en-CA', { timeZone: 'Asia/Riyadh' });
 }
 
+// ضغط الصورة في المتصفح وتحويلها إلى Data URL صغير (تُحفظ داخل قاعدة البيانات
+// حتى تعمل على Vercel/Turso ولا نحتاج استضافة ملفات خارجية)
+async function compressImage(file, { maxDim = 720, quality = 0.82 } = {}) {
+  try {
+    const bitmap = await createImageBitmap(file, { imageOrientation: 'from-image' });
+    let { width, height } = bitmap;
+    const scale = Math.min(1, maxDim / Math.max(width, height));
+    if (scale < 1) {
+      width = Math.max(1, Math.round(width * scale));
+      height = Math.max(1, Math.round(height * scale));
+    }
+    const canvas = document.createElement('canvas');
+    canvas.width = width;
+    canvas.height = height;
+    canvas.getContext('2d').drawImage(bitmap, 0, 0, width, height);
+    if (bitmap.close) bitmap.close();
+    for (const type of ['image/webp', 'image/jpeg']) {
+      const url = canvas.toDataURL(type, quality);
+      if (url && url.length < 1000 * 1024) return url;
+    }
+    return canvas.toDataURL('image/jpeg', quality);
+  } catch (err) {
+    // مسار احتياطي للمتصفحات القديمة بدون createImageBitmap
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => {
+        const scale = Math.min(1, maxDim / Math.max(img.naturalWidth, img.naturalHeight));
+        const canvas = document.createElement('canvas');
+        canvas.width = Math.max(1, Math.round(img.naturalWidth * scale));
+        canvas.height = Math.max(1, Math.round(img.naturalHeight * scale));
+        canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+        resolve(canvas.toDataURL('image/jpeg', quality));
+      };
+      img.onerror = () => reject(new Error('تعذّر قراءة الصورة'));
+      img.src = URL.createObjectURL(file);
+    });
+  }
+}
+
+// هل الصورة رابط/بيانات فعلية (وليس رمزاً تعبيرياً)؟
+const isRealImage = (img) => /^(data:|https?:|\/)/.test(img || '');
+
 export default function AdminPanel() {
   const [user, setUser] = useState(null);
   const [users, setUsers] = useState([]);
@@ -1398,11 +1440,69 @@ function BombaStoreAdmin({ showError, showMessage }) {
   const [data, setData] = useState(null);
   const [sub, setSub] = useState('merchants');
   const [busy, setBusy] = useState(false);
+  const [editingId, setEditingId] = useState(null);
+  const [uploading, setUploading] = useState(false);
 
   // نماذج الإضافة
   const [merchant, setMerchant] = useState({ name: '', type: 'shop', category: '', description: '', logo: '🏪', location: '', phone: '' });
-  const [product, setProduct] = useState({ merchant_id: '', name: '', brand: '', description: '', image: '👕', price_sar: 100, discount_label: '' });
+  const [product, setProduct] = useState({ merchant_id: '', name: '', brand: '', description: '', image: '', price_sar: 100, discount_label: '' });
   const [voucher, setVoucher] = useState({ merchant_id: '', title: '', description: '', type: 'discount', discount: 20, cost_bombs: 300 });
+
+  const resetProduct = () => {
+    setEditingId(null);
+    setProduct({ merchant_id: '', name: '', brand: '', description: '', image: '', price_sar: 100, discount_label: '' });
+  };
+
+  const onPickProductImage = async (e) => {
+    const file = e.target.files && e.target.files[0];
+    e.target.value = '';
+    if (!file) return;
+    if (!file.type.startsWith('image/')) { showError('الرجاء اختيار ملف صورة'); return; }
+    setUploading(true);
+    try {
+      const dataUrl = await compressImage(file);
+      setProduct((p) => ({ ...p, image: dataUrl }));
+      showMessage('✅ تم اختيار الصورة وضغطها');
+    } catch {
+      showError('تعذّر قراءة الصورة — جرب صورة أخرى');
+    }
+    setUploading(false);
+  };
+
+  const startEdit = (pr) => {
+    setEditingId(pr.id);
+    setProduct({
+      merchant_id: pr.merchant_id || '',
+      name: pr.name,
+      brand: pr.brand || '',
+      description: pr.description || '',
+      image: pr.image || '',
+      price_sar: pr.price_sar,
+      discount_label: pr.discount_label || '',
+    });
+    document.getElementById('product-form')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+
+  const submitProduct = async (e) => {
+    e.preventDefault();
+    setBusy(true);
+    try {
+      const form = { ...product, merchant_id: Number(product.merchant_id) || null };
+      const url = editingId ? `/api/admin/bomba-store?entity=product&id=${editingId}` : '/api/admin/bomba-store';
+      const res = await fetch(url, {
+        method: editingId ? 'PUT' : 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ entity: 'product', ...form }),
+      });
+      const d = await res.json();
+      if (res.ok) {
+        showMessage(d.message);
+        resetProduct();
+        load();
+      } else showError(d.error || 'فشل الحفظ');
+    } catch { showError('خطأ في الاتصال'); }
+    setBusy(false);
+  };
 
   const load = () => {
     fetch('/api/admin/bomba-store').then((r) => r.json()).then((d) => setData(d || {})).catch(() => {});
@@ -1522,9 +1622,9 @@ function BombaStoreAdmin({ showError, showMessage }) {
 
       {sub === 'products' && (
         <div style={{ marginTop: 16 }}>
-          <div style={{ border: '1px solid var(--border)', borderRadius: 10, padding: 14, marginBottom: 14 }}>
-            <h4>➕ إضافة منتج من محلات الرياضة</h4>
-            <form onSubmit={(e) => submit(e, 'product', product, () => setProduct({ merchant_id: '', name: '', brand: '', description: '', image: '👕', price_sar: 100, discount_label: '' }))}>
+          <div id="product-form" style={{ border: '1px solid var(--accent)', borderRadius: 10, padding: 14, marginBottom: 14 }}>
+            <h4>{editingId ? `✏️ تعديل المنتج #${editingId}` : '➕ إضافة منتج من محلات الرياضة'}</h4>
+            <form onSubmit={submitProduct}>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
                 <div className="form-group" style={{ margin: 0 }}>
                   <label>الشريك</label>
@@ -1548,19 +1648,46 @@ function BombaStoreAdmin({ showError, showMessage }) {
                   <input type="number" min="0" value={product.price_sar} onChange={(e) => setProduct({ ...product, price_sar: e.target.value })} />
                 </div>
                 <div className="form-group" style={{ margin: 0 }}>
-                  <label>الصورة</label>
-                  <input type="text" value={product.image} onChange={(e) => setProduct({ ...product, image: e.target.value })} />
+                  <label>شارة الخصم (اختياري)</label>
+                  <input type="text" value={product.discount_label} onChange={(e) => setProduct({ ...product, discount_label: e.target.value })} placeholder="خصم 30% هذا الأسبوع" />
+                </div>
+              </div>
+              <div className="form-group" style={{ margin: 0 }}>
+                <label>صورة المنتج</label>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                  <label className="upload-btn" style={{ cursor: uploading ? 'wait' : 'pointer' }}>
+                    {uploading ? '⏳ جارٍ الضغط…' : '📷 رفع صورة المنتج'}
+                    <input type="file" accept="image/*" style={{ display: 'none' }} onChange={onPickProductImage} disabled={uploading} />
+                  </label>
+                  {product.image && isRealImage(product.image) ? (
+                    <img src={product.image} alt="معاينة" className="upload-preview" />
+                  ) : (
+                    product.image && <span style={{ fontSize: '1.8rem' }}>{product.image}</span>
+                  )}
+                </div>
+                <input
+                  type="text"
+                  style={{ marginTop: 8 }}
+                  value={isRealImage(product.image) ? '' : product.image}
+                  onChange={(e) => setProduct({ ...product, image: e.target.value })}
+                  placeholder="أو الصق رابط صورة مباشر https://… أو رمز تعبيري 👕"
+                />
+                <div style={{ color: 'var(--text-muted)', fontSize: '0.75rem', marginTop: 4 }}>
+                  💡 الصورة تُضغط تلقائياً وتُحفظ داخل التطبيق — لا حاجة لأي استضافة خارجية.
                 </div>
               </div>
               <div className="form-group" style={{ margin: 0 }}>
                 <label>الوصف</label>
                 <input type="text" value={product.description} onChange={(e) => setProduct({ ...product, description: e.target.value })} />
               </div>
-              <div className="form-group" style={{ margin: 0 }}>
-                <label>شارة الخصم (اختياري، مثل: خصم 30% هذا الأسبوع)</label>
-                <input type="text" value={product.discount_label} onChange={(e) => setProduct({ ...product, discount_label: e.target.value })} />
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button type="submit" className="btn-sm btn-success" disabled={busy || uploading}>
+                  {busy ? 'جارٍ الحفظ…' : editingId ? '💾 حفظ التعديلات' : 'إضافة المنتج'}
+                </button>
+                {editingId && (
+                  <button type="button" className="btn-sm btn-outline" onClick={resetProduct}>إلغاء التعديل</button>
+                )}
               </div>
-              <button type="submit" className="btn-sm btn-success" disabled={busy}>إضافة المنتج</button>
             </form>
           </div>
 
@@ -1574,13 +1701,20 @@ function BombaStoreAdmin({ showError, showMessage }) {
                 {products.map((pr) => {
                   const m = merchants.find((x) => x.id === pr.merchant_id);
                   return (
-                    <tr key={pr.id}>
-                      <td>{pr.image || '👕'}</td>
+                    <tr key={pr.id} style={pr.id === editingId ? { background: 'var(--accent-soft)' } : undefined}>
+                      <td>
+                        {isRealImage(pr.image) ? (
+                          <img src={pr.image} alt="" className="adm-img" />
+                        ) : (
+                          <span style={{ fontSize: '1.3rem' }}>{pr.image || '👕'}</span>
+                        )}
+                      </td>
                       <td style={{ fontWeight: 600 }}>{pr.name}</td>
                       <td>{pr.brand}</td>
                       <td>{m ? `${m.logo} ${m.name}` : '—'}</td>
                       <td style={{ color: 'var(--gold)' }}>{pr.price_sar} ر.س</td>
                       <td>
+                        <button className="btn-sm btn-outline" onClick={() => startEdit(pr)}>✏️ تعديل</button>{' '}
                         <button className="btn-sm btn-danger" onClick={() => del('product', pr.id)}>حذف</button>
                       </td>
                     </tr>

@@ -45,6 +45,37 @@ export async function POST(req) {
   }
 }
 
+export async function PUT(req) {
+  try {
+    await requireAdmin(req);
+    const entity = String(new URL(req.url).searchParams.get('entity') || '');
+    const id = Number(new URL(req.url).searchParams.get('id'));
+    const body = await req.json();
+    if (!entity || !id) return NextResponse.json({ error: 'entity و id مطلوبان' }, { status: 400 });
+
+    if (entity === 'product') {
+      await db.prepare(
+        'UPDATE store_products SET merchant_id = ?, name = ?, brand = ?, description = ?, image = ?, price_sar = ?, discount_label = ?, active = ? WHERE id = ?'
+      ).run(
+        Number(body.merchant_id) || null,
+        String(body.name || '').trim(),
+        String(body.brand || ''),
+        String(body.description || ''),
+        String(body.image || ''),
+        Number(body.price_sar) || 0,
+        String(body.discount_label || ''),
+        body.active === false ? 0 : 1,
+        id
+      );
+      return NextResponse.json({ message: 'تم حفظ التعديلات ✅' });
+    }
+
+    return NextResponse.json({ error: 'نوع غير معروف للتعديل' }, { status: 400 });
+  } catch (e) {
+    return errorResponse(e);
+  }
+}
+
 export async function DELETE(req) {
   try {
     await requireAdmin(req);

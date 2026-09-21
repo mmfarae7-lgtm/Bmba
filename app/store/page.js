@@ -199,7 +199,13 @@ export default function BombaStorePage() {
                   <div className="hub-grid" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))' }}>
                     {data.products.map((pr) => (
                       <div key={pr.id} className="sec-card" style={{ textAlign: 'center', display: 'flex', flexDirection: 'column', gap: 6 }}>
-                        <div style={{ fontSize: '2.4rem' }}>{pr.image || '👕'}</div>
+                        {pr.image && /^(data:|https?:|\/)/.test(pr.image) ? (
+                          <div className="sp-img-wrap">
+                            <img src={pr.image} alt={pr.name} className="sp-img" loading="lazy" />
+                          </div>
+                        ) : (
+                          <div style={{ fontSize: '2.4rem' }}>{pr.image || '👕'}</div>
+                        )}
                         <div style={{ fontWeight: 800 }}>{pr.name}</div>
                         {pr.brand && <div style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>{pr.brand}</div>}
                         <div style={{ color: 'var(--text-muted)', fontSize: '0.8rem', flex: 1 }}>{pr.description}</div>
