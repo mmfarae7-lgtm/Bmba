@@ -70,6 +70,25 @@ export async function PUT(req) {
       return NextResponse.json({ message: 'تم حفظ التعديلات ✅' });
     }
 
+    if (entity === 'merchant') {
+      const rawLogo = String(body.logo || '🏪').trim();
+      const logo = /^(data:|https?:|\/)/.test(rawLogo) ? rawLogo : rawLogo.slice(0, 8);
+      await db.prepare(
+        'UPDATE store_merchants SET name = ?, type = ?, category = ?, description = ?, logo = ?, location = ?, phone = ?, active = ? WHERE id = ?'
+      ).run(
+        String(body.name || '').trim(),
+        String(body.type || 'shop'),
+        String(body.category || ''),
+        String(body.description || ''),
+        logo,
+        String(body.location || ''),
+        String(body.phone || ''),
+        body.active === false ? 0 : 1,
+        id
+      );
+      return NextResponse.json({ message: 'تم حفظ تعديلات الشريك ✅' });
+    }
+
     return NextResponse.json({ error: 'نوع غير معروف للتعديل' }, { status: 400 });
   } catch (e) {
     return errorResponse(e);

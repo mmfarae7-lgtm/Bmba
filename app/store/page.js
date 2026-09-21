@@ -234,7 +234,13 @@ export default function BombaStorePage() {
                   <div className="hub-grid" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))' }}>
                     {data.merchants.map((m) => (
                       <div key={m.id} className="sec-card" style={{ textAlign: 'center', display: 'flex', flexDirection: 'column', gap: 6 }}>
-                        <div style={{ fontSize: '2.8rem' }}>{m.logo || '🏪'}</div>
+                        {m.logo && /^(data:|https?:|\/)/.test(m.logo) ? (
+                          <div className="sp-img-wrap" style={{ maxWidth: 110, margin: '0 auto' }}>
+                            <img src={m.logo} alt={m.name} className="sp-img" loading="lazy" />
+                          </div>
+                        ) : (
+                          <div style={{ fontSize: '2.8rem' }}>{m.logo || '🏪'}</div>
+                        )}
                         <div style={{ fontWeight: 800 }}>{m.name}</div>
                         <div style={{ color: 'var(--gold)', fontSize: '0.75rem', fontWeight: 700 }}>
                           {m.type === 'shop' ? '🏬 متجر رياضي' : m.type === 'restaurant' ? '🍽️ مطعم/كافيه' : '🛒 متجر'}

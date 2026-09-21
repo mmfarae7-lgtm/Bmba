@@ -1441,16 +1441,69 @@ function BombaStoreAdmin({ showError, showMessage }) {
   const [sub, setSub] = useState('merchants');
   const [busy, setBusy] = useState(false);
   const [editingId, setEditingId] = useState(null);
+  const [merchantEditId, setMerchantEditId] = useState(null);
   const [uploading, setUploading] = useState(false);
 
   // نماذج الإضافة
-  const [merchant, setMerchant] = useState({ name: '', type: 'shop', category: '', description: '', logo: '🏪', location: '', phone: '' });
+  const [merchant, setMerchant] = useState({ name: '', type: 'shop', category: '', description: '', logo: '', location: '', phone: '' });
   const [product, setProduct] = useState({ merchant_id: '', name: '', brand: '', description: '', image: '', price_sar: 100, discount_label: '' });
   const [voucher, setVoucher] = useState({ merchant_id: '', title: '', description: '', type: 'discount', discount: 20, cost_bombs: 300 });
 
   const resetProduct = () => {
     setEditingId(null);
     setProduct({ merchant_id: '', name: '', brand: '', description: '', image: '', price_sar: 100, discount_label: '' });
+  };
+
+  const resetMerchant = () => {
+    setMerchantEditId(null);
+    setMerchant({ name: '', type: 'shop', category: '', description: '', logo: '', location: '', phone: '' });
+  };
+
+  const onPickMerchantLogo = async (e) => {
+    const file = e.target.files && e.target.files[0];
+    e.target.value = '';
+    if (!file) return;
+    if (!file.type.startsWith('image/')) { showError('الرجاء اختيار ملف صورة'); return; }
+    setUploading(true);
+    try {
+      const dataUrl = await compressImage(file);
+      setMerchant((m) => ({ ...m, logo: dataUrl }));
+      showMessage('✅ تم اختيار شعار الشريك وضغطه');
+    } catch {
+      showError('تعذّر قراءة الصورة — جرب صورة أخرى');
+    }
+    setUploading(false);
+  };
+
+  const startEditMerchant = (m) => {
+    setMerchantEditId(m.id);
+    setMerchant({
+      name: m.name,
+      type: m.type || 'shop',
+      category: m.category || '',
+      description: m.description || '',
+      logo: m.logo || '',
+      location: m.location || '',
+      phone: m.phone || '',
+    });
+    document.getElementById('merchant-form')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+
+  const submitMerchant = async (e) => {
+    e.preventDefault();
+    setBusy(true);
+    try {
+      const url = merchantEditId ? `/api/admin/bomba-store?entity=merchant&id=${merchantEditId}` : '/api/admin/bomba-store';
+      const res = await fetch(url, {
+        method: merchantEditId ? 'PUT' : 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ entity: 'merchant', ...merchant }),
+      });
+      const d = await res.json();
+      if (res.ok) { showMessage(d.message); resetMerchant(); load(); }
+      else showError(d.error || 'فشل الحفظ');
+    } catch { showError('خطأ في الاتصال'); }
+    setBusy(false);
   };
 
   const onPickProductImage = async (e) => {
@@ -1550,9 +1603,9 @@ function BombaStoreAdmin({ showError, showMessage }) {
 
       {sub === 'merchants' && (
         <div style={{ marginTop: 16 }}>
-          <div style={{ border: '1px solid var(--border)', borderRadius: 10, padding: 14, marginBottom: 14 }}>
-            <h4>➕ إضافة شريك (محل / مطعم / متجر)</h4>
-            <form onSubmit={(e) => submit(e, 'merchant', merchant, () => setMerchant({ name: '', type: 'shop', category: '', description: '', logo: '🏪', location: '', phone: '' }))}>
+          <div id="merchant-form" style={{ border: '1px solid var(--accent)', borderRadius: 10, padding: 14, marginBottom: 14 }}>
+            <h4>{merchantEditId ? `✏️ تعديل الشريك #${merchantEditId}` : '➕ إضافة شريك (محل / مطعم / متجر)'}</h4>
+            <form onSubmit={submitMerchant}>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
                 <div className="form-group" style={{ margin: 0 }}>
                   <label>الاسم *</label>
@@ -1567,14 +1620,32 @@ function BombaStoreAdmin({ showError, showMessage }) {
                   </select>
                 </div>
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-                <div className="form-group" style={{ margin: 0 }}>
-                  <label>التصنيف</label>
-                  <input type="text" value={merchant.category} onChange={(e) => setMerchant({ ...merchant, category: e.target.value })} placeholder="ملابس رياضية" />
+              <div className="form-group" style={{ margin: 0 }}>
+                <label>التصنيف</label>
+                <input type="text" value={merchant.category} onChange={(e) => setMerchant({ ...merchant, category: e.target.value })} placeholder="ملابس رياضية" />
+              </div>
+              <div className="form-group" style={{ margin: 0 }}>
+                <label>شعار الشريك</label>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                  <label className="upload-btn" style={{ cursor: uploading ? 'wait' : 'pointer' }}>
+                    {uploading ? '⏳ جارٍ الضغط…' : '📷 رفع شعار الشريك'}
+                    <input type="file" accept="image/*" style={{ display: 'none' }} onChange={onPickMerchantLogo} disabled={uploading} />
+                  </label>
+                  {merchant.logo && isRealImage(merchant.logo) ? (
+                    <img src={merchant.logo} alt="معاينة الشعار" className="upload-preview" />
+                  ) : (
+                    merchant.logo && <span style={{ fontSize: '1.8rem' }}>{merchant.logo}</span>
+                  )}
                 </div>
-                <div className="form-group" style={{ margin: 0 }}>
-                  <label>الشعار</label>
-                  <input type="text" value={merchant.logo} onChange={(e) => setMerchant({ ...merchant, logo: e.target.value })} />
+                <input
+                  type="text"
+                  style={{ marginTop: 8 }}
+                  value={isRealImage(merchant.logo) ? '' : merchant.logo}
+                  onChange={(e) => setMerchant({ ...merchant, logo: e.target.value })}
+                  placeholder="أو الصق رابط شعار مباشر https://… أو رمز تعبيري 🏪"
+                />
+                <div style={{ color: 'var(--text-muted)', fontSize: '0.75rem', marginTop: 4 }}>
+                  💡 الشعار يُضغط تلقائياً ويُحفظ داخل التطبيق.
                 </div>
               </div>
               <div className="form-group" style={{ margin: 0 }}>
@@ -1591,7 +1662,14 @@ function BombaStoreAdmin({ showError, showMessage }) {
                   <input type="text" value={merchant.phone} onChange={(e) => setMerchant({ ...merchant, phone: e.target.value })} />
                 </div>
               </div>
-              <button type="submit" className="btn-sm btn-success" disabled={busy}>إضافة الشريك</button>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button type="submit" className="btn-sm btn-success" disabled={busy || uploading}>
+                  {busy ? 'جارٍ الحفظ…' : merchantEditId ? '💾 حفظ التعديلات' : 'إضافة الشريك'}
+                </button>
+                {merchantEditId && (
+                  <button type="button" className="btn-sm btn-outline" onClick={resetMerchant}>إلغاء التعديل</button>
+                )}
+              </div>
             </form>
           </div>
 
@@ -1603,13 +1681,20 @@ function BombaStoreAdmin({ showError, showMessage }) {
               </thead>
               <tbody>
                 {merchants.map((m) => (
-                  <tr key={m.id}>
-                    <td>{m.logo}</td>
+                  <tr key={m.id} style={m.id === merchantEditId ? { background: 'var(--accent-soft)' } : undefined}>
+                    <td>
+                      {isRealImage(m.logo) ? (
+                        <img src={m.logo} alt="" className="adm-img" />
+                      ) : (
+                        <span style={{ fontSize: '1.4rem' }}>{m.logo || '🏪'}</span>
+                      )}
+                    </td>
                     <td style={{ fontWeight: 600 }}>{m.name}</td>
                     <td>{m.type === 'shop' ? '🏬 متجر رياضي' : m.type === 'restaurant' ? '🍽️ مطعم' : '🛒 متجر'}</td>
                     <td>{m.category}</td>
                     <td style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>{m.location}</td>
                     <td>
+                      <button className="btn-sm btn-outline" onClick={() => startEditMerchant(m)}>✏️ تعديل</button>{' '}
                       <button className="btn-sm btn-danger" onClick={() => del('merchant', m.id)}>حذف</button>
                     </td>
                   </tr>
