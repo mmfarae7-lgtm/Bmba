@@ -10,13 +10,10 @@ export default function TopBar({ user }) {
   const router = useRouter();
   const pathname = usePathname();
   const [menuOpen, setMenuOpen] = useState(false);
-  const [notif, setNotif] = useState(user && !user.guest ? user.notifications !== 0 : true);
   const [toast, setToast] = useState('');
+  const [touchY, setTouchY] = useState(null);
+  const [dragY, setDragY] = useState(0);
   const menuRef = useRef(null);
-
-  useEffect(() => {
-    if (user && !user.guest) setNotif(user.notifications !== 0);
-  }, [user]);
 
   useEffect(() => {
     const onDoc = (e) => {
@@ -26,22 +23,27 @@ export default function TopBar({ user }) {
     return () => document.removeEventListener('mousedown', onDoc);
   }, []);
 
+  // قفل تمرير الصفحة خلف الـ Bottom Sheet على الجوال فقط
+  useEffect(() => {
+    if (!menuOpen) return;
+    const mq = window.matchMedia('(max-width: 480px)');
+    const lock = () => {
+      document.body.style.overflow = 'hidden';
+      document.body.classList.add('bomba-menu-open');
+    };
+    const unlock = () => {
+      document.body.style.overflow = '';
+      document.body.classList.remove('bomba-menu-open');
+    };
+    if (mq.matches) lock();
+    const onChange = (e) => (e.matches ? lock() : unlock());
+    mq.addEventListener('change', onChange);
+    return () => { unlock(); mq.removeEventListener('change', onChange); };
+  }, [menuOpen]);
+
   const showToast = (m) => {
     setToast(m);
     setTimeout(() => setToast(''), 2600);
-  };
-
-  const toggleNotif = async () => {
-    if (!user || user.guest) return;
-    const next = !notif;
-    setNotif(next);
-    try {
-      await fetch('/api/rewards/notifications', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ enabled: next }),
-      });
-    } catch {}
   };
 
   const shareApp = async () => {
@@ -74,12 +76,29 @@ export default function TopBar({ user }) {
     } catch { router.push('/'); }
   };
 
+  // سحب لأسفل لإغلاق الـ Bottom Sheet (الجوال)
+  const onTouchStart = (e) => {
+    if (e.currentTarget.scrollTop <= 0) setTouchY(e.touches[0].clientY);
+  };
+  const onTouchMove = (e) => {
+    if (touchY == null) return;
+    const dy = e.touches[0].clientY - touchY;
+    if (dy > 0) setDragY(dy);
+  };
+  const onTouchEnd = () => {
+    if (dragY > 80) setMenuOpen(false);
+    setDragY(0);
+    setTouchY(null);
+  };
+
+  const go = (path) => { setMenuOpen(false); router.push(path); };
+
   const signed = user && !user.guest;
   const points = signed ? Number(user.points || 0) : 0;
   const bombs = signed ? Number(user.bombs || 0) : 0;
 
   return (
-    <nav className="topbar">
+    <nav className="topbar" ref={menuRef}>
       <div className="topbar-coin">
         {user ? (
           <Link href="/rewards" className="coin-badge" title={t('rw_title')}>
@@ -105,17 +124,8 @@ export default function TopBar({ user }) {
           <button type="button" className="topbar-back" onClick={goBack} aria-label="رجوع" title="رجوع">
             →</button>
         )}
-        {signed && (
-          <button
-            className={`bell ${notif ? 'on' : 'off'}`}
-            onClick={toggleNotif}
-            title={notif ? t('topb_notif_off') : t('topb_notif_on')}
-          >
-            {notif ? '🔔' : '🔕'}
-          </button>
-        )}
 
-        <div className="topbar-menu" ref={menuRef}>
+        <div className="topbar-menu">
           <button type="button" className="topbar-profile-btn" onClick={() => setMenuOpen(!menuOpen)}>
             <span className="topbar-avatar">
               {signed && user.avatar ? (
@@ -134,28 +144,55 @@ export default function TopBar({ user }) {
             )}
             <span className="caret">▾</span>
           </button>
+        </div>
+      </div>
 
-          {menuOpen && (
-            <div className="topbar-dropdown">
-              {signed && (
-                <>
-                  <Link href="/profile" className="dd-head" onClick={() => setMenuOpen(false)}>
-                    <span className="topbar-avatar big">
-                      {user.avatar ? <img src={user.avatar} alt="" /> : <span className="avatar-initial">{user.name.charAt(0)}</span>}
-                    </span>
-                    <div>
-                      <div className="dd-name">{user.name}</div>
-                      <div className="dd-role">{t('topb_profile')}</div>
+      {menuOpen && (
+        <>
+          <div className="topbar-backdrop" onClick={() => setMenuOpen(false)} />
+          <div
+            className="topbar-dropdown"
+            onTouchStart={onTouchStart}
+            onTouchMove={onTouchMove}
+            onTouchEnd={onTouchEnd}
+            style={{
+              transform: dragY > 0 ? `translateY(${dragY}px)` : undefined,
+              transition: dragY > 0 ? 'none' : undefined,
+            }}
+          >
+            <div className="dd-grab" aria-hidden="true" />
+
+            {signed && (
+              <div className="dd-head-row">
+                <Link href="/profile" className="dd-head" onClick={() => setMenuOpen(false)}>
+                  <span className="topbar-avatar big">
+                    {user.avatar ? <img src={user.avatar} alt="" /> : <span className="avatar-initial">{user.name.charAt(0)}</span>}
+                  </span>
+                  <div className="dd-head-info">
+                    <div className="dd-name">{user.name}</div>
+                    <div className="dd-stats">
+                      <span className="dd-stat dd-stat-pts"><b dir="ltr">{points.toLocaleString()}</b> {t('topb_pts')}</span>
+                      <span className="dd-stat dd-stat-bombs"><b dir="ltr">{bombs.toLocaleString()}</b> {t('topb_bombs')}</span>
                     </div>
-                  </Link>
-                  <div className="dd-divider" />
-                </>
-              )}
+                  </div>
+                </Link>
+                <button
+                  type="button"
+                  className="dd-close"
+                  aria-label={t('dd_close')}
+                  onClick={() => setMenuOpen(false)}
+                >✕</button>
+              </div>
+            )}
+            <div className="dd-divider" />
 
-              <MenuItem icon="👤" label={t('topb_profile')} onClick={() => { setMenuOpen(false); router.push('/profile'); }} />
-              <MenuItem icon="⚙️" label={t('menu_settings')} onClick={() => { setMenuOpen(false); router.push('/profile'); }} />
-              <MenuItem icon="🛍️" label={t('menu_store')} onClick={() => { setMenuOpen(false); router.push('/store'); }} />
+            <div className="dd-body">
+              <div className="dd-sec-title">{t('dd_sec_account')}</div>
+              <MenuItem icon="👤" label={t('topb_profile')} onClick={() => go('/profile')} />
+              <MenuItem icon="⚙️" label={t('menu_settings')} onClick={() => go('/profile')} />
+              <MenuItem icon="🛍️" label={t('menu_store')} onClick={() => go('/store')} />
 
+              <div className="dd-sec-title">{t('dd_sec_prefs')}</div>
               <div className="dd-row">
                 <span className="dd-ico">🌐</span>
                 <span className="dd-label">{t('menu_lang')}</span>
@@ -164,41 +201,35 @@ export default function TopBar({ user }) {
                   <button className={lang === 'en' ? 'active' : ''} onClick={() => setLang('en')}>EN</button>
                 </div>
               </div>
-
               <div className="dd-row">
                 <span className="dd-ico">🎨</span>
                 <span className="dd-label">{t('menu_theme')}</span>
                 <ThemeToggle />
               </div>
 
-              <MenuItem icon="ℹ️" label={t('menu_info')} onClick={() => { setMenuOpen(false); router.push('/info'); }} />
+              <div className="dd-sec-title">{t('dd_sec_app')}</div>
+              <MenuItem icon="ℹ️" label={t('menu_info')} onClick={() => go('/info')} />
               <MenuItem icon="📣" label={t('menu_follow')} onClick={() => { setMenuOpen(false); showToast(t('follow_soon')); }} />
               <MenuItem icon="📤" label={t('menu_share')} onClick={shareApp} />
 
-              <div className="dd-row dd-here">
-                <span className="dd-ico">📋</span>
-                <span className="dd-label">{t('menu_data')}</span>
-                <span className="caret">◀</span>
-              </div>
-              <div className="dd-sub">
-                <MenuItem small icon="🔒" label={t('sub_privacy')} onClick={() => { setMenuOpen(false); router.push('/privacy'); }} />
-                <MenuItem small icon="📜" label={t('sub_terms')} onClick={() => { setMenuOpen(false); router.push('/terms'); }} />
-                <MenuItem small icon="❓" label={t('sub_faq')} onClick={() => { setMenuOpen(false); router.push('/faq'); }} />
-                {signed && <MenuItem small danger icon="🚪" label={t('sub_logout')} onClick={logout} />}
-              </div>
+              <div className="dd-sec-title">{t('menu_data')}</div>
+              <MenuItem icon="🔒" label={t('sub_privacy')} onClick={() => go('/privacy')} />
+              <MenuItem icon="📜" label={t('sub_terms')} onClick={() => go('/terms')} />
+              <MenuItem icon="❓" label={t('sub_faq')} onClick={() => go('/faq')} />
+              {signed && <MenuItem danger icon="🚪" label={t('sub_logout')} onClick={logout} />}
             </div>
-          )}
-        </div>
-      </div>
+          </div>
+          </>
+        )}
 
       {toast && <div className="topbar-toast">{toast}</div>}
     </nav>
   );
 }
 
-function MenuItem({ icon, label, onClick, small, danger }) {
+function MenuItem({ icon, label, onClick, danger }) {
   return (
-    <button type="button" className={`dd-item ${small ? 'small' : ''} ${danger ? 'danger' : ''}`} onClick={onClick}>
+    <button type="button" className={`dd-item ${danger ? 'danger' : ''}`} onClick={onClick}>
       <span className="dd-ico">{icon}</span>
       <span className="dd-label">{label}</span>
     </button>

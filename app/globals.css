@@ -1732,20 +1732,55 @@ input, button, textarea, select {
 .caret { color: var(--text-muted); font-size: 0.7rem; }
 
 /* Dropdown */
+.topbar-backdrop {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  z-index: 490;
+}
 .topbar-dropdown {
   position: absolute;
-  top: calc(100% + 3px);
-  right: 0;
-  width: 236px;
-  max-height: calc(100dvh - 84px);
-  overflow-y: auto;
-  overscroll-behavior: contain;
+  top: 44px;
+  right: 10px;
+  display: flex;
+  flex-direction: column;
+  width: 240px;
+  max-height: calc(100dvh - 90px);
   background: var(--bg-card);
   border: 1px solid var(--border);
   border-radius: 13px;
   box-shadow: var(--shadow);
   padding: 5px;
-  z-index: 200;
+  z-index: 500;
+}
+.dd-grab {
+  display: none;
+  width: 44px;
+  height: 4px;
+  border-radius: 99px;
+  background: var(--border);
+  margin: 4px auto 2px;
+  flex-shrink: 0;
+}
+.dd-head-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.dd-close {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: var(--bg-input);
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  cursor: pointer;
+  flex-shrink: 0;
 }
 .dd-head {
   display: flex;
@@ -1753,11 +1788,48 @@ input, button, textarea, select {
   gap: 9px;
   padding: 7px 7px;
   border-radius: 10px;
+  flex: 1;
+  min-width: 0;
 }
 .dd-head:hover { background: var(--bg-card-hover); }
+.dd-head-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+  flex: 1;
+}
 .dd-name { font-weight: 800; font-size: 0.85rem; }
-.dd-role { color: var(--text-muted); font-size: 0.68rem; }
+.dd-stats { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.dd-stat {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.7rem;
+  font-weight: 800;
+  color: var(--text-muted);
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-soft);
+  border-radius: 99px;
+  padding: 2px 9px;
+}
+.dd-stat b { font-weight: 900; }
+.dd-stat-pts b { color: var(--gold); }
+.dd-stat-bombs b { color: var(--accent); }
 .dd-divider { border-top: 1px solid var(--border); margin: 4px 3px; }
+.dd-sec-title {
+  font-size: 0.62rem;
+  font-weight: 900;
+  color: var(--text-muted);
+  letter-spacing: 0.3px;
+  margin: 8px 8px 2px;
+}
+.dd-body {
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  min-height: 0;
+  padding: 3px;
+}
 .dd-item, .dd-row {
   display: flex;
   align-items: center;
@@ -1774,6 +1846,7 @@ input, button, textarea, select {
   text-align: right;
 }
 .dd-item:hover, .dd-row:hover { background: var(--bg-card-hover); }
+.dd-item:active, .dd-row:active { background: var(--bg-card-hover); transform: scale(0.98); }
 .dd-item.small { padding: 8px 8px 8px 8px; font-weight: 600; font-size: 0.85rem; }
 .dd-item.small .dd-ico { width: 22px; font-size: 0.85rem; }
 .dd-item.danger { color: var(--danger); }
@@ -1819,15 +1892,43 @@ input, button, textarea, select {
   white-space: nowrap;
 }
 @media (max-width: 480px) {
+  body.bomba-menu-open .topbar { z-index: 600; }
+  .topbar-backdrop { display: block; }
   .topbar-dropdown {
     position: fixed;
-    top: 60px;
-    right: 8px;
-    left: 8px;
-    width: auto;
+    top: auto;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    width: 100%;
+    max-height: 82dvh;
+    border-radius: 18px 18px 0 0;
+    border: none;
+    border-top: 1px solid var(--border);
+    box-shadow: 0 -10px 30px rgba(0, 0, 0, 0.28);
+    padding: 6px 12px calc(12px + env(safe-area-inset-bottom));
+    animation: dd-sheet-up 0.28s cubic-bezier(0.2, 0.9, 0.3, 1);
+    z-index: 500;
   }
+  .dd-grab { display: block; }
+  .dd-close { display: flex; }
+  .dd-divider { margin: 6px 3px 4px; }
+  .dd-item, .dd-row {
+    min-height: 46px;
+    padding: 11px 12px;
+    font-size: 0.88rem;
+    border-radius: 12px;
+  }
+  .dd-item.small { padding: 11px 12px; min-height: 46px; }
+  .dd-ico { width: 26px; font-size: 1.05rem; }
+  .dd-sec-title { margin: 10px 10px 3px; }
+  .dd-sub { margin: 2px 0 6px; }
   .topbar-title { font-size: 0.95rem; }
   .topbar-avatar { width: 29px; height: 29px; }
+}
+@keyframes dd-sheet-up {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
 }
 
 /* ============ BOTTOM NAV (4 tabs) ============ */
