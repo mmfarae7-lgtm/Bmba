@@ -381,6 +381,7 @@ export default function AdminPanel() {
           <button className={tab === 'live' ? 'active' : ''} onClick={() => setTab('live')}>🔴 المباشر</button>
           {isSuper && <button className={tab === 'admins' ? 'active' : ''} onClick={() => setTab('admins')}>⭐ إدارة المشرفين</button>}
           <button className={tab === 'chal' ? 'active' : ''} onClick={() => setTab('chal')}>🎯 التحديات</button>
+          <button className={tab === 'bombaStore' ? 'active' : ''} onClick={() => setTab('bombaStore')}>🛍️ متجر بمبا</button>
         </div>
 
         {loading ? (
@@ -791,6 +792,10 @@ export default function AdminPanel() {
 
             {tab === 'chal' && (
               <ChallengesAdmin isSuper={isSuper} showError={showError} showMessage={showMessage} />
+            )}
+
+            {tab === 'bombaStore' && (
+              <BombaStoreAdmin showError={showError} showMessage={showMessage} />
             )}
           </>
         )}
@@ -1380,6 +1385,309 @@ function ChallengesAdmin({ isSuper, showError, showMessage }) {
                     <td style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>{p.created_at}</td>
                   </tr>
                 ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function BombaStoreAdmin({ showError, showMessage }) {
+  const [data, setData] = useState(null);
+  const [sub, setSub] = useState('merchants');
+  const [busy, setBusy] = useState(false);
+
+  // نماذج الإضافة
+  const [merchant, setMerchant] = useState({ name: '', type: 'shop', category: '', description: '', logo: '🏪', location: '', phone: '' });
+  const [product, setProduct] = useState({ merchant_id: '', name: '', brand: '', description: '', image: '👕', price_sar: 100, discount_label: '' });
+  const [voucher, setVoucher] = useState({ merchant_id: '', title: '', description: '', type: 'discount', discount: 20, cost_bombs: 300 });
+
+  const load = () => {
+    fetch('/api/admin/bomba-store').then((r) => r.json()).then((d) => setData(d || {})).catch(() => {});
+  };
+
+  useEffect(() => { load(); }, []);
+
+  const submit = async (e, entity, form, reset) => {
+    e.preventDefault();
+    setBusy(true);
+    try {
+      const res = await fetch('/api/admin/bomba-store', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ entity, ...form }),
+      });
+      const d = await res.json();
+      if (res.ok) { showMessage(d.message); if (reset) reset(); load(); }
+      else showError(d.error || 'فشل الإضافة');
+    } catch { showError('خطأ في الاتصال'); }
+    setBusy(false);
+  };
+
+  const del = async (entity, id) => {
+    if (!window.confirm('تأكيد الحذف؟')) return;
+    const res = await fetch(`/api/admin/bomba-store?entity=${entity}&id=${id}`, { method: 'DELETE' });
+    const d = await res.json();
+    if (res.ok) { showMessage(d.message); load(); }
+    else showError(d.error || 'فشل الحذف');
+  };
+
+  const merchants = data?.merchants || [];
+  const products = data?.products || [];
+  const vouchers = data?.vouchers || [];
+  const redemptions = data?.redemptions || [];
+
+  return (
+    <div className="admin-card">
+      <div className="tabs">
+        <button className={sub === 'merchants' ? 'active' : ''} onClick={() => setSub('merchants')}>🏪 الشركاء</button>
+        <button className={sub === 'products' ? 'active' : ''} onClick={() => setSub('products')}>👕 المنتجات</button>
+        <button className={sub === 'vouchers' ? 'active' : ''} onClick={() => setSub('vouchers')}>🎟️ القسائم</button>
+        <button className={sub === 'redemptions' ? 'active' : ''} onClick={() => setSub('redemptions')}>📋 الاستبدالات</button>
+      </div>
+
+      {sub === 'merchants' && (
+        <div style={{ marginTop: 16 }}>
+          <div style={{ border: '1px solid var(--border)', borderRadius: 10, padding: 14, marginBottom: 14 }}>
+            <h4>➕ إضافة شريك (محل / مطعم / متجر)</h4>
+            <form onSubmit={(e) => submit(e, 'merchant', merchant, () => setMerchant({ name: '', type: 'shop', category: '', description: '', logo: '🏪', location: '', phone: '' }))}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                <div className="form-group" style={{ margin: 0 }}>
+                  <label>الاسم *</label>
+                  <input type="text" value={merchant.name} onChange={(e) => setMerchant({ ...merchant, name: e.target.value })} required />
+                </div>
+                <div className="form-group" style={{ margin: 0 }}>
+                  <label>النوع</label>
+                  <select value={merchant.type} onChange={(e) => setMerchant({ ...merchant, type: e.target.value })}>
+                    <option value="shop">🏬 متجر رياضي</option>
+                    <option value="restaurant">🍽️ مطعم / كافيه</option>
+                    <option value="store">🛒 متجر</option>
+                  </select>
+                </div>
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                <div className="form-group" style={{ margin: 0 }}>
+                  <label>التصنيف</label>
+                  <input type="text" value={merchant.category} onChange={(e) => setMerchant({ ...merchant, category: e.target.value })} placeholder="ملابس رياضية" />
+                </div>
+                <div className="form-group" style={{ margin: 0 }}>
+                  <label>الشعار</label>
+                  <input type="text" value={merchant.logo} onChange={(e) => setMerchant({ ...merchant, logo: e.target.value })} />
+                </div>
+              </div>
+              <div className="form-group" style={{ margin: 0 }}>
+                <label>الوصف</label>
+                <input type="text" value={merchant.description} onChange={(e) => setMerchant({ ...merchant, description: e.target.value })} />
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                <div className="form-group" style={{ margin: 0 }}>
+                  <label>الموقع</label>
+                  <input type="text" value={merchant.location} onChange={(e) => setMerchant({ ...merchant, location: e.target.value })} />
+                </div>
+                <div className="form-group" style={{ margin: 0 }}>
+                  <label>الهاتف</label>
+                  <input type="text" value={merchant.phone} onChange={(e) => setMerchant({ ...merchant, phone: e.target.value })} />
+                </div>
+              </div>
+              <button type="submit" className="btn-sm btn-success" disabled={busy}>إضافة الشريك</button>
+            </form>
+          </div>
+
+          <h4>الشركاء الحاليون ({merchants.length})</h4>
+          <div style={{ overflowX: 'auto' }}>
+            <table className="admin-table">
+              <thead>
+                <tr><th>الشعار</th><th>الاسم</th><th>النوع</th><th>التصنيف</th><th>الموقع</th><th>إجراءات</th></tr>
+              </thead>
+              <tbody>
+                {merchants.map((m) => (
+                  <tr key={m.id}>
+                    <td>{m.logo}</td>
+                    <td style={{ fontWeight: 600 }}>{m.name}</td>
+                    <td>{m.type === 'shop' ? '🏬 متجر رياضي' : m.type === 'restaurant' ? '🍽️ مطعم' : '🛒 متجر'}</td>
+                    <td>{m.category}</td>
+                    <td style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>{m.location}</td>
+                    <td>
+                      <button className="btn-sm btn-danger" onClick={() => del('merchant', m.id)}>حذف</button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {sub === 'products' && (
+        <div style={{ marginTop: 16 }}>
+          <div style={{ border: '1px solid var(--border)', borderRadius: 10, padding: 14, marginBottom: 14 }}>
+            <h4>➕ إضافة منتج من محلات الرياضة</h4>
+            <form onSubmit={(e) => submit(e, 'product', product, () => setProduct({ merchant_id: '', name: '', brand: '', description: '', image: '👕', price_sar: 100, discount_label: '' }))}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                <div className="form-group" style={{ margin: 0 }}>
+                  <label>الشريك</label>
+                  <select value={product.merchant_id} onChange={(e) => setProduct({ ...product, merchant_id: e.target.value })}>
+                    <option value="">— اختر الشريك —</option>
+                    {merchants.map((m) => <option key={m.id} value={m.id}>{m.logo} {m.name}</option>)}
+                  </select>
+                </div>
+                <div className="form-group" style={{ margin: 0 }}>
+                  <label>اسم المنتج *</label>
+                  <input type="text" value={product.name} onChange={(e) => setProduct({ ...product, name: e.target.value })} required />
+                </div>
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10 }}>
+                <div className="form-group" style={{ margin: 0 }}>
+                  <label>الماركة</label>
+                  <input type="text" value={product.brand} onChange={(e) => setProduct({ ...product, brand: e.target.value })} />
+                </div>
+                <div className="form-group" style={{ margin: 0 }}>
+                  <label>السعر (ر.س)</label>
+                  <input type="number" min="0" value={product.price_sar} onChange={(e) => setProduct({ ...product, price_sar: e.target.value })} />
+                </div>
+                <div className="form-group" style={{ margin: 0 }}>
+                  <label>الصورة</label>
+                  <input type="text" value={product.image} onChange={(e) => setProduct({ ...product, image: e.target.value })} />
+                </div>
+              </div>
+              <div className="form-group" style={{ margin: 0 }}>
+                <label>الوصف</label>
+                <input type="text" value={product.description} onChange={(e) => setProduct({ ...product, description: e.target.value })} />
+              </div>
+              <div className="form-group" style={{ margin: 0 }}>
+                <label>شارة الخصم (اختياري، مثل: خصم 30% هذا الأسبوع)</label>
+                <input type="text" value={product.discount_label} onChange={(e) => setProduct({ ...product, discount_label: e.target.value })} />
+              </div>
+              <button type="submit" className="btn-sm btn-success" disabled={busy}>إضافة المنتج</button>
+            </form>
+          </div>
+
+          <h4>المنتجات ({products.length})</h4>
+          <div style={{ overflowX: 'auto' }}>
+            <table className="admin-table">
+              <thead>
+                <tr><th>الصورة</th><th>المنتج</th><th>الماركة</th><th>الشريك</th><th>السعر</th><th>إجراءات</th></tr>
+              </thead>
+              <tbody>
+                {products.map((pr) => {
+                  const m = merchants.find((x) => x.id === pr.merchant_id);
+                  return (
+                    <tr key={pr.id}>
+                      <td>{pr.image || '👕'}</td>
+                      <td style={{ fontWeight: 600 }}>{pr.name}</td>
+                      <td>{pr.brand}</td>
+                      <td>{m ? `${m.logo} ${m.name}` : '—'}</td>
+                      <td style={{ color: 'var(--gold)' }}>{pr.price_sar} ر.س</td>
+                      <td>
+                        <button className="btn-sm btn-danger" onClick={() => del('product', pr.id)}>حذف</button>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {sub === 'vouchers' && (
+        <div style={{ marginTop: 16 }}>
+          <div style={{ border: '1px solid var(--border)', borderRadius: 10, padding: 14, marginBottom: 14 }}>
+            <h4>➕ إضافة قسيمة / خصم يشتريها المستخدم بالبمبات</h4>
+            <form onSubmit={(e) => submit(e, 'voucher', voucher, () => setVoucher({ merchant_id: '', title: '', description: '', type: 'discount', discount: 20, cost_bombs: 300 }))}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                <div className="form-group" style={{ margin: 0 }}>
+                  <label>الشريك</label>
+                  <select value={voucher.merchant_id} onChange={(e) => setVoucher({ ...voucher, merchant_id: e.target.value })}>
+                    <option value="">— اختر الشريك —</option>
+                    {merchants.map((m) => <option key={m.id} value={m.id}>{m.logo} {m.name}</option>)}
+                  </select>
+                </div>
+                <div className="form-group" style={{ margin: 0 }}>
+                  <label>العنوان *</label>
+                  <input type="text" value={voucher.title} onChange={(e) => setVoucher({ ...voucher, title: e.target.value })} required placeholder="خصم 50%" />
+                </div>
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10 }}>
+                <div className="form-group" style={{ margin: 0 }}>
+                  <label>النوع</label>
+                  <select value={voucher.type} onChange={(e) => setVoucher({ ...voucher, type: e.target.value })}>
+                    <option value="discount">🔥 خصم (20/50/70%)</option>
+                    <option value="item">🎁 قسيمة عنصر/وجبة</option>
+                  </select>
+                </div>
+                <div className="form-group" style={{ margin: 0 }}>
+                  <label>نسبة الخصم</label>
+                  <input type="number" min="0" max="100" value={voucher.discount} onChange={(e) => setVoucher({ ...voucher, discount: e.target.value })} />
+                </div>
+                <div className="form-group" style={{ margin: 0 }}>
+                  <label>التكلفة (بمبات)</label>
+                  <input type="number" min="0" value={voucher.cost_bombs} onChange={(e) => setVoucher({ ...voucher, cost_bombs: e.target.value })} />
+                </div>
+              </div>
+              <div className="form-group" style={{ margin: 0 }}>
+                <label>الوصف</label>
+                <input type="text" value={voucher.description} onChange={(e) => setVoucher({ ...voucher, description: e.target.value })} />
+              </div>
+              <button type="submit" className="btn-sm btn-success" disabled={busy}>إضافة القسيمة</button>
+            </form>
+          </div>
+
+          <h4>القسائم ({vouchers.length})</h4>
+          <div style={{ overflowX: 'auto' }}>
+            <table className="admin-table">
+              <thead>
+                <tr><th>العنوان</th><th>الشريك</th><th>النوع</th><th>الخصم</th><th>التكلفة</th><th>إجراءات</th></tr>
+              </thead>
+              <tbody>
+                {vouchers.map((v) => {
+                  const m = merchants.find((x) => x.id === v.merchant_id);
+                  return (
+                    <tr key={v.id}>
+                      <td style={{ fontWeight: 600 }}>{v.title}</td>
+                      <td>{m ? `${m.logo} ${m.name}` : '—'}</td>
+                      <td>{v.type === 'discount' ? '🔥 خصم' : '🎁 عنصر'}</td>
+                      <td>{v.discount ? `${v.discount}%` : '—'}</td>
+                      <td style={{ color: 'var(--gold)' }}>{v.cost_bombs} 🪙</td>
+                      <td>
+                        <button className="btn-sm btn-danger" onClick={() => del('voucher', v.id)}>حذف</button>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {sub === 'redemptions' && (
+        <div style={{ marginTop: 16 }}>
+          <h4>📋 سجل استبدال القسائم ({redemptions.length})</h4>
+          <div style={{ overflowX: 'auto' }}>
+            <table className="admin-table">
+              <thead>
+                <tr><th>العضو</th><th>القسيمة</th><th>الشريك</th><th>الكود</th><th>الحالة</th><th>التاريخ</th></tr>
+              </thead>
+              <tbody>
+                {redemptions.length === 0 ? (
+                  <tr><td colSpan="6" style={{ textAlign: 'center', color: 'var(--text-muted)' }}>لا يوجد استبدالات بعد</td></tr>
+                ) : (
+                  redemptions.map((r) => (
+                    <tr key={r.id}>
+                      <td style={{ fontWeight: 600 }}>{r.user_name}</td>
+                      <td>{r.voucher_title}</td>
+                      <td>{r.merchant_name || '—'}</td>
+                      <td style={{ fontWeight: 800, color: 'var(--gold)' }} dir="ltr">{r.code}</td>
+                      <td>
+                        <span className={`badge ${r.used ? 'badge-count' : 'badge-admin'}`}>{r.used ? '✅ مستخدمة' : 'فعالة'}</span>
+                      </td>
+                      <td style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>{r.redeemed_at}</td>
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
           </div>

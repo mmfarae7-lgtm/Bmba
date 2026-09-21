@@ -154,6 +154,7 @@ export default function TopBar({ user }) {
 
               <MenuItem icon="👤" label={t('topb_profile')} onClick={() => { setMenuOpen(false); router.push('/profile'); }} />
               <MenuItem icon="⚙️" label={t('menu_settings')} onClick={() => { setMenuOpen(false); router.push('/profile'); }} />
+              <MenuItem icon="🛍️" label={t('menu_store')} onClick={() => { setMenuOpen(false); router.push('/store'); }} />
 
               <div className="dd-row">
                 <span className="dd-ico">🌐</span>
