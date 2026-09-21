@@ -23,7 +23,7 @@ export default function ChallengesHub() {
     { href: '/challenges/quiz', icon: '❓', title: t('chal_hub_quiz'), desc: t('chal_hub_quiz_d'), cls: 'quiz' },
     { href: '/challenges/champions', icon: '👑', title: t('chal_hub_champions'), desc: t('chal_hub_champions_d'), cls: 'champions' },
     { href: '/challenges/coach', icon: '🧢', title: t('chal_hub_coach'), desc: t('chal_hub_coach_d'), cls: 'coach' },
-    { href: '/challenges/store', icon: '🛒', title: t('chal_hub_store'), desc: t('chal_hub_store_d'), cls: 'store' },
+    { href: '/store', icon: '🛍️', title: t('chal_hub_store'), desc: t('chal_hub_store_d'), cls: 'store' },
   ];
 
   return (

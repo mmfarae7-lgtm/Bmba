@@ -7,11 +7,23 @@ import BottomNav from '../../components/BottomNav';
 export default function BombaStorePage() {
   const [user, setUser] = useState(null);
   const [data, setData] = useState(null);
+  const [gifts, setGifts] = useState(null);
   const [balance, setBalance] = useState(0);
-  const [tab, setTab] = useState('products');
+  const [tab, setTab] = useState('gifts');
   const [toast, setToast] = useState('');
   const [busyId, setBusyId] = useState(null);
   const [lastCode, setLastCode] = useState(null);
+
+  const loadGifts = async () => {
+    try {
+      const res = await fetch('/api/store');
+      if (res.ok) {
+        const d = await res.json();
+        setGifts(d);
+        if (typeof d.balance === 'number') setBalance(d.balance);
+      }
+    } catch {}
+  };
 
   const load = async () => {
     try {
@@ -30,11 +42,31 @@ export default function BombaStorePage() {
       setBalance(Number(d.user?.bombs || 0));
     }).catch(() => {});
     load();
+    loadGifts();
   }, []);
 
   const showToast = (m) => {
     setToast(m);
     setTimeout(() => setToast(''), 3200);
+  };
+
+  const buyGift = async (item) => {
+    setBusyId('gift-' + item.id);
+    try {
+      const res = await fetch('/api/store/buy', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ item_id: item.id }),
+      });
+      const d = await res.json();
+      if (res.ok) {
+        if (typeof d.balance === 'number') setBalance(d.balance);
+        showToast(d.bonus_bombs ? `${d.message} (+${d.bonus_bombs} بمبة)` : d.message);
+        load();
+        loadGifts();
+      } else showToast(d.error || 'فشلت العملية');
+    } catch { showToast('خطأ في الاتصال'); }
+    setBusyId(null);
   };
 
   const redeem = async (voucher) => {
@@ -97,6 +129,7 @@ export default function BombaStorePage() {
         </div>
 
         <div className="hub-tabs" style={{ display: 'flex', gap: 8, overflowX: 'auto', marginBottom: 16 }}>
+          <button type="button" className={`btn-sm ${tab === 'gifts' ? 'btn-primary' : 'btn-outline'}`} onClick={() => setTab('gifts')}>🎁 الجوائز</button>
           <button type="button" className={`btn-sm ${tab === 'products' ? 'btn-primary' : 'btn-outline'}`} onClick={() => setTab('products')}>👕 المنتجات</button>
           <button type="button" className={`btn-sm ${tab === 'merchants' ? 'btn-primary' : 'btn-outline'}`} onClick={() => setTab('merchants')}>🏬 الشركاء</button>
           <button type="button" className={`btn-sm ${tab === 'vouchers' ? 'btn-primary' : 'btn-outline'}`} onClick={() => setTab('vouchers')}>🎟️ القسائم والخصومات</button>
@@ -107,6 +140,56 @@ export default function BombaStorePage() {
           <div className="loading"><div className="spinner"></div></div>
         ) : (
           <>
+            {/* ——— الجوائز (المتجر القديم مدمجاً) ——— */}
+            {tab === 'gifts' && (
+              <>
+                {!gifts ? (
+                  <div className="loading"><div className="spinner"></div></div>
+                ) : (
+                  <>
+                    <div className="chal-hint" style={{ marginBottom: 12 }}>
+                      💡 جوائز داخل التطبيق تشتريها بمباتك (بمبات، ألقاب، حماية توقع…)
+                    </div>
+                    <div className="hub-grid" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))' }}>
+                      {(gifts.items || []).map((item) => {
+                        const canAfford = balance >= item.price;
+                        return (
+                          <div key={item.id} className="sec-card" style={{ textAlign: 'center', display: 'flex', flexDirection: 'column', gap: 6 }}>
+                            <div style={{ fontSize: '2rem' }}>{item.icon}</div>
+                            <div style={{ fontWeight: 800 }}>{item.title}</div>
+                            <div style={{ color: 'var(--text-muted)', fontSize: '0.8rem', flex: 1 }}>{item.description}</div>
+                            <div style={{ color: 'var(--gold)', fontWeight: 800 }}>{item.price.toLocaleString()} 🪙</div>
+                            <button
+                              type="button"
+                              className={`btn-sm ${canAfford && !item.purchased ? 'btn-success' : 'btn-outline'}`}
+                              disabled={busyId === 'gift-' + item.id || !canAfford || item.purchased}
+                              onClick={() => buyGift(item)}
+                            >
+                              {busyId === 'gift-' + item.id ? 'جارٍ الشراء…' : item.purchased ? 'تم الشراء' : canAfford ? 'اشترِ' : 'رصيد غير كافٍ'}
+                            </button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                    <h3 style={{ margin: '18px 0 10px' }}>📦 مشترياتي</h3>
+                    {!gifts.purchases || gifts.purchases.length === 0 ? (
+                      <div className="chal-hint">لم تشترِ جائزة بعد — ابدأ الآن 🎁</div>
+                    ) : (
+                      <div className="sec-card" style={{ padding: 6 }}>
+                        {gifts.purchases.map((p) => (
+                          <div key={p.id} className="lb-row">
+                            <span className="lb-name">{p.icon} {p.title}</span>
+                            <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>{new Date(p.created_at).toLocaleDateString('ar')}</span>
+                            <span className="lb-pts" dir="ltr">-{p.price} 🪙</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </>
+                )}
+              </>
+            )}
+
             {/* ——— المنتجات ——— */}
             {tab === 'products' && (
               <>
