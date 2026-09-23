@@ -1,4 +1,4 @@
-const CACHE = 'bomba-v3';
+const CACHE = 'bomba-v4';
 const APP_SHELL = ['/', '/onboarding', '/manifest.json', '/icon-192.png', '/icon-512.png', '/icon-512-maskable.png', '/apple-touch-icon.png', '/favicon.ico'];
 
 self.addEventListener('install', (event) => {
